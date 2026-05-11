@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  
+  --color-bg: #F0F2F5;
+  --color-card: #FFFFFF;
+  --color-brand: #3B82F6;
+  --color-text-main: #1F2937;
+  --color-text-muted: #6B7280;
+  --color-border: #E5E7EB;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-text-main font-sans;
+  }
+}
+
+.bento-card {
+  @apply bg-white rounded-[20px] border border-gray-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] p-6 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-0.5;
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
