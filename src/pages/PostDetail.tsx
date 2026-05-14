@@ -3,69 +3,32 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
-import { MessageSquare, Heart, Share2, Send, Trash2, Edit, ChevronLeft, Clock, ArrowUp, Bookmark, ArrowRight } from 'lucide-react';
+import { MessageSquare, Heart, Share2, Send, Trash2, Edit, ChevronLeft, Clock, ArrowUp, ArrowRight } from 'lucide-react';
 import { dataService } from '../services/dataService';
-import { MOCK_ARTICLES } from '../lib/mockData';
-import { Article, Comment } from '../types';
+import { calculateReadTime } from '../features/articles/article.utils';
+import { useArticleDetail } from '../features/articles/useArticleDetail';
+import { notifyUnavailable } from '../features/unavailable';
 
 export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  
-  const [post, setPost] = useState<Article | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const { post, comments, relatedPosts, loading, notFound } = useArticleDetail(id);
   const [newComment, setNewComment] = useState('');
   const [guestName, setGuestName] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number, name: string } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
-    if (!id) return;
-    fetchData();
-
     const handleScroll = () => {
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = (window.scrollY / totalHeight) * 100;
+      const progress = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
       setScrollProgress(progress);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [id]);
-
-  const fetchData = async () => {
-    if (!id) return;
-    try {
-      const fetchedPost = await dataService.getArticleDetail(Number(id));
-      if (fetchedPost) {
-        setPost(fetchedPost);
-        // Note: Comment API not in provided doc, skipping or using empty for now
-        setComments([]);
-      } else {
-        navigate('/');
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      // Fallback to mock for preview if API fails
-      const mockPost = MOCK_ARTICLES.find(p => p.id === Number(id));
-      if (mockPost) {
-        setPost(mockPost);
-      } else {
-        navigate('/');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateReadTime = (content: string) => {
-    const wordsPerMinute = 200;
-    const wordCount = content.split(/\s+/).length;
-    const time = Math.ceil(wordCount / wordsPerMinute);
-    return time;
-  };
+  }, []);
 
   const handleScrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -73,12 +36,11 @@ export default function PostDetail() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Comment API not implement in backend yet as per doc
-    alert('评论功能暂未开放');
+    notifyUnavailable('评论功能');
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    // Comment API not implement in backend yet
+  const handleDeleteComment = async (_commentId?: number) => {
+    notifyUnavailable('评论删除功能');
   };
 
   const handleDeletePost = async () => {
@@ -99,10 +61,20 @@ export default function PostDetail() {
       navigate('/auth');
       return;
     }
-    // Like API not in doc for current version
+    notifyUnavailable('点赞功能');
   };
 
   if (loading) return <div className="text-center py-20 font-serif text-2xl italic text-[#3B82F6]">正在为您开启精彩故事...</div>;
+  if (notFound) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-gray-500 font-medium mb-4">文章不存在，或当前接口暂时无法获取这篇文章。</p>
+        <Link to="/" className="text-sm font-bold text-[#3B82F6] hover:underline underline-offset-4">
+          返回发现文章
+        </Link>
+      </div>
+    );
+  }
   if (!post) return null;
 
   const isAuthor = user?.id === post.authorId;
@@ -235,14 +207,14 @@ export default function PostDetail() {
       </article>
 
       {/* Related Posts Section */}
-      {post && (
+      {relatedPosts.length > 0 && (
         <section className="mt-16 space-y-8 animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="w-1 h-6 bg-[#3B82F6] rounded-full" />
             <h3 className="text-xl font-bold tracking-tight">更多精彩内容</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {MOCK_ARTICLES.filter(p => p.id !== post.id && p.categoryName === post.categoryName).slice(0, 2).map(related => (
+             {relatedPosts.map(related => (
                <Link 
                 key={related.id} 
                 to={`/post/${related.id}`}

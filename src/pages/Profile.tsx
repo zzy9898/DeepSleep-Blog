@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Calendar, Tag, User, MapPin, Link as LinkIcon, MessageSquare, Heart, Eye, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Calendar, Heart, Eye, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import { Article, UserProfile } from '../types';
 import { motion } from 'motion/react';

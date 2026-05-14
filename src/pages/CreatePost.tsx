@@ -1,114 +1,33 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import ReactMarkdown from 'react-markdown';
-import { Save, Eye, Edit3, Send, X, Hash, ChevronDown } from 'lucide-react';
-import { dataService } from '../services/dataService';
-
-const CATEGORY_MAP: Record<string, number> = {
-  '技术': 1,
-  '设计': 2,
-  '生活': 3,
-  '音乐': 4,
-  '旅行': 5
-};
-
-const REVERSE_CATEGORY_MAP: Record<number, string> = {
-  1: '技术',
-  2: '设计',
-  3: '生活',
-  4: '音乐',
-  5: '旅行'
-};
+import { AlertCircle, Eye, Edit3, Send, Hash, ChevronDown } from 'lucide-react';
+import { useCategories } from '../features/articles/useCategories';
+import { usePostEditor } from '../features/articles/usePostEditor';
 
 export default function CreatePost() {
   const { id } = useParams();
   const { user, loading: authLoading, isAdmin } = useAuth();
-  const navigate = useNavigate();
-  
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('技术');
-  const [tags, setTags] = useState('');
-  const [status, setStatus] = useState<number>(1); // 1: Published, 0: Draft
-  const [isPreview, setIsPreview] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    
-    // Admins are not allowed to publish articles as per previous restriction
-    if (isAdmin) {
-      navigate('/');
-      return;
-    }
-    
-    if (id) {
-      fetchPost();
-    }
-  }, [id, user, isAdmin, authLoading]);
-
-  const fetchPost = async () => {
-    if (!id) return;
-    try {
-      const data = await dataService.getArticleDetail(Number(id));
-      if (data) {
-        // Only author can edit
-        if (data.authorId !== user?.id && !isAdmin) {
-          navigate('/');
-          return;
-        }
-        setTitle(data.title);
-        setContent(data.content);
-        setCategory(data.categoryName || '其它');
-        setTags(data.tags.map(t => t.name).join(', '));
-        setStatus(data.status);
-      }
-    } catch (error) {
-      console.error("Error fetching post:", error);
-      navigate('/');
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setLoading(true);
-
-    const postData = {
-      title,
-      content,
-      categoryId: CATEGORY_MAP[category] || 1,
-      tagNames: tags.split(',').map(t => t.trim()).filter(t => t),
-      visibility: 0 // Public by default
-    };
-
-    try {
-      if (id) {
-        await dataService.updateArticle(Number(id), postData);
-        navigate(`/post/${id}`);
-      } else {
-        if (status === 0) {
-          const post = await dataService.createDraft(postData);
-          navigate(`/post/${post.id}`);
-        } else {
-          const post = await dataService.createArticle(postData);
-          navigate(`/post/${post.id}`);
-        }
-      }
-    } catch (error) {
-      console.error("Error saving post:", error);
-      alert("保存失败，请检查参数。");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const categories = ['技术', '设计', '生活', '音乐', '旅行'];
+  const {
+    title,
+    setTitle,
+    content,
+    setContent,
+    categoryId,
+    setCategoryId,
+    tags,
+    setTags,
+    status,
+    setStatus,
+    isPreview,
+    setIsPreview,
+    loading,
+    errorMessage,
+    fieldErrors,
+    fieldErrorVersion,
+    handleSave,
+  } = usePostEditor({ id, user, authLoading, isAdmin });
+  const { categories, loading: categoriesLoading } = useCategories();
 
   if (authLoading) return <div className="p-20 text-center text-[#3B82F6] font-bold">正在认证身份...</div>;
 
@@ -138,6 +57,17 @@ export default function CreatePost() {
         </div>
       </header>
 
+      {errorMessage && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="mb-6 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+        >
+          <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-6">
           {isPreview ? (
@@ -147,19 +77,45 @@ export default function CreatePost() {
             </div>
           ) : (
             <div className="bento-card !p-8 space-y-6 focus-within:ring-2 focus-within:ring-[#3B82F6]/20 transition-all">
-              <input
-                type="text"
-                placeholder="请输入文章标题"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-4xl font-extrabold bg-transparent border-none focus:ring-0 outline-none placeholder:text-gray-200 tracking-tight"
-              />
-              <textarea
-                placeholder="在此输入正文... (支持常用 Markdown 语法)"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full min-h-[600px] bg-transparent border-none focus:ring-0 outline-none text-lg resize-none placeholder:text-gray-200 leading-relaxed font-medium"
-              />
+              <div
+                key={`title-${fieldErrorVersion}`}
+                className={`rounded-xl border border-transparent px-3 py-2 -mx-3 -my-2 ${fieldErrors.title ? 'field-error-flash' : ''}`}
+              >
+                <input
+                  type="text"
+                  placeholder="请输入文章标题"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.title)}
+                  aria-describedby={fieldErrors.title ? 'title-error' : undefined}
+                  className="w-full text-4xl font-extrabold bg-transparent border-none focus:ring-0 outline-none placeholder:text-gray-200 tracking-tight"
+                />
+              </div>
+              {fieldErrors.title && (
+                <p id="title-error" className="-mt-3 flex items-center gap-2 text-xs font-bold text-red-600">
+                  <AlertCircle size={14} />
+                  标题{fieldErrors.title}
+                </p>
+              )}
+              <div
+                key={`content-${fieldErrorVersion}`}
+                className={`rounded-xl border border-transparent px-3 py-2 -mx-3 ${fieldErrors.content ? 'field-error-flash' : ''}`}
+              >
+                <textarea
+                  placeholder="在此输入正文... (支持常用 Markdown 语法)"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.content)}
+                  aria-describedby={fieldErrors.content ? 'content-error' : undefined}
+                  className="w-full min-h-[600px] bg-transparent border-none focus:ring-0 outline-none text-lg resize-none placeholder:text-gray-200 leading-relaxed font-medium"
+                />
+              </div>
+              {fieldErrors.content && (
+                <p id="content-error" className="-mt-3 flex items-center gap-2 text-xs font-bold text-red-600">
+                  <AlertCircle size={14} />
+                  正文{fieldErrors.content}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -172,14 +128,24 @@ export default function CreatePost() {
               </label>
               <div className="relative">
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full appearance-none bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-[#3B82F6] outline-none cursor-pointer"
+                  value={categoryId || ''}
+                  onChange={(e) => setCategoryId(Number(e.target.value))}
+                  aria-invalid={Boolean(fieldErrors.categoryId)}
+                  aria-describedby={fieldErrors.categoryId ? 'category-error' : undefined}
+                  className={`w-full appearance-none bg-gray-50 border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 outline-none cursor-pointer ${fieldErrors.categoryId ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
+                  disabled={categoriesLoading}
                 >
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="" disabled>{categoriesLoading ? '正在加载分类...' : '请选择分类'}</option>
+                  {categories.map(c => <option key={c.categoryId} value={c.categoryId}>{c.name}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
               </div>
+              {fieldErrors.categoryId && (
+                <p id="category-error" className="flex items-center gap-1.5 text-[11px] font-bold text-red-600">
+                  <AlertCircle size={13} />
+                  {fieldErrors.categoryId}
+                </p>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -189,8 +155,16 @@ export default function CreatePost() {
                 placeholder="代码, 生活, 指南..."
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#3B82F6] outline-none"
+                aria-invalid={Boolean(fieldErrors.tagNames || fieldErrors.tags)}
+                aria-describedby={fieldErrors.tagNames || fieldErrors.tags ? 'tags-error' : undefined}
+                className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 outline-none ${fieldErrors.tagNames || fieldErrors.tags ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
               />
+              {(fieldErrors.tagNames || fieldErrors.tags) && (
+                <p id="tags-error" className="flex items-center gap-1.5 text-[11px] font-bold text-red-600">
+                  <AlertCircle size={13} />
+                  {fieldErrors.tagNames || fieldErrors.tags}
+                </p>
+              )}
               <p className="text-[10px] text-gray-400 italic font-medium px-1">多个标签请用英文逗号隔开</p>
             </div>
 

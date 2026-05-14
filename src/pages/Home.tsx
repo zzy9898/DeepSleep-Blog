@@ -1,40 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Tag, Calendar, User, ChevronRight, Loader2, Sparkles, ArrowRight, Heart, LayoutDashboard } from 'lucide-react';
+import { Search, ChevronRight, Loader2, Sparkles, ArrowRight, Heart, LayoutDashboard } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
-import { dataService } from '../services/dataService';
-import { Article } from '../types';
-
-const CATEGORY_MAP: Record<string, number> = {
-  '技术': 1,
-  '设计': 2,
-  '生活': 3,
-  '音乐': 4,
-  '旅行': 5
-};
-
-const REVERSE_CATEGORY_MAP: Record<number, string> = {
-  1: '技术',
-  2: '设计',
-  3: '生活',
-  4: '音乐',
-  5: '旅行'
-};
+import { CATEGORY_COLORS, getCategoryAccent } from '../features/articles/article.constants';
+import { useArticleList } from '../features/articles/useArticleList';
+import { useCategories } from '../features/articles/useCategories';
+import { notifyUnavailable } from '../features/unavailable';
 
 export default function Home() {
   const { user, isAdmin } = useAuth();
-  const [posts, setPosts] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const {
+    filteredPosts,
+    loading,
+    loadingMore,
+    searchTerm,
+    setSearchTerm,
+    activeCategoryId,
+    setActiveCategoryId,
+    hasMore,
+    fetchMorePosts,
+  } = useArticleList(searchParams);
+  const { categories } = useCategories();
 
-  const handleLike = async (e: React.MouseEvent, post: Article) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -43,14 +34,10 @@ export default function Home() {
       navigate('/auth');
       return;
     }
-    // Note: Like API not explicitly shown in provided doc for individual toggle,
-    // usually handled via separate interactions or updateArticle if owner.
-    // For now, we simulate or skip as per doc limits.
+    notifyUnavailable('点赞功能');
   };
 
-  const categories = ['技术', '设计', '生活', '音乐', '旅行'];
   const [quote, setQuote] = useState({ text: '', author: '' });
-  const [isQuoteVisible, setIsQuoteVisible] = useState(true);
 
   const quotes = [
     { text: "在这个充满噪音的世界，每个人都需要一方安静的角落。", author: "DeepSleep 灵感集" },
@@ -69,56 +56,6 @@ export default function Home() {
       navigate(`/post/${randomPost.id}`);
     }
   };
-  const categoryColors: Record<string, { bg: string, text: string, border: string }> = {
-    '技术': { bg: 'bg-blue-50/50', text: 'text-blue-600', border: 'border-blue-100' },
-    '设计': { bg: 'bg-purple-50/50', text: 'text-purple-600', border: 'border-purple-100' },
-    '生活': { bg: 'bg-emerald-50/50', text: 'text-emerald-600', border: 'border-emerald-100' },
-    '音乐': { bg: 'bg-rose-50/50', text: 'text-rose-600', border: 'border-rose-100' },
-    '旅行': { bg: 'bg-amber-50/50', text: 'text-amber-600', border: 'border-amber-100' },
-  };
-
-  const POSTS_PER_PAGE = 6;
-
-  useEffect(() => {
-    const tagParam = searchParams.get('tag');
-    if (tagParam) {
-      setSearchTerm(`#${tagParam}`);
-    }
-    fetchPosts(true);
-  }, [activeCategory, searchParams]);
-
-  const fetchPosts = async (isInitial = false) => {
-    if (isInitial) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      const categoryId = activeCategory ? CATEGORY_MAP[activeCategory] : undefined;
-      const res = await dataService.getArticles({
-        cursor: isInitial ? undefined : (nextCursor || undefined),
-        size: POSTS_PER_PAGE,
-        categoryId,
-        keyword: searchTerm || undefined
-      });
-      
-      setHasMore(res.hasMore);
-      setNextCursor(res.nextCursor);
-      if (isInitial) {
-        setPosts(res.items);
-      } else {
-        setPosts(prev => [...prev, ...res.items]);
-      }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  const filteredPosts = posts; // Server side filtering preferred now
 
   return (
     <div className="space-y-12">
@@ -235,22 +172,22 @@ export default function Home() {
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
           <button
-            onClick={() => setActiveCategory(null)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${!activeCategory ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-400 hover:text-gray-600 border-gray-100 hover:border-gray-200'}`}
+            onClick={() => setActiveCategoryId(null)}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${!activeCategoryId ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-400 hover:text-gray-600 border-gray-100 hover:border-gray-200'}`}
           >
             全部
           </button>
           {categories.map(cat => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              key={cat.categoryId}
+              onClick={() => setActiveCategoryId(cat.categoryId)}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
-                activeCategory === cat 
+                activeCategoryId === cat.categoryId
                   ? 'bg-gray-900 text-white border-gray-900 shadow-md' 
-                  : `bg-white ${categoryColors[cat]?.text || 'text-gray-400'} border-gray-100 hover:border-gray-200`
+                  : `bg-white ${CATEGORY_COLORS[cat.name]?.text || 'text-gray-400'} border-gray-100 hover:border-gray-200`
               }`}
             >
-              {cat}
+              {cat.name}
             </button>
           ))}
         </div>
@@ -272,25 +209,21 @@ export default function Home() {
                   key={post.id} 
                   to={`/post/${post.id}`}
                   className={`group bento-card flex flex-col relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 ${
-                    index === 0 && !searchTerm && !activeCategory ? 'md:col-span-2' : ''
+                    index === 0 && !searchTerm && !activeCategoryId ? 'md:col-span-2' : ''
                   }`}
                   style={{
                     borderLeft: `4px solid ${
-                      post.categoryName === '技术' ? '#3B82F6' : 
-                      post.categoryName === '设计' ? '#A855F7' : 
-                      post.categoryName === '生活' ? '#10B981' : 
-                      post.categoryName === '音乐' ? '#F43F5E' : 
-                      post.categoryName === '旅行' ? '#F59E0B' : '#E5E7EB'
+                      getCategoryAccent(post.categoryName)
                     }`
                   }}
                 >
                   <div className="flex items-center gap-2 mb-4">
                     <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                       categoryColors[post.categoryName || '其它']?.bg || 'bg-gray-50'
+                       CATEGORY_COLORS[post.categoryName || '其它']?.bg || 'bg-gray-50'
                     } ${
-                       categoryColors[post.categoryName || '其它']?.text || 'text-gray-500'
+                       CATEGORY_COLORS[post.categoryName || '其它']?.text || 'text-gray-500'
                     } ${
-                       categoryColors[post.categoryName || '其它']?.border || 'border-gray-100'
+                       CATEGORY_COLORS[post.categoryName || '其它']?.border || 'border-gray-100'
                     }`}>
                       {post.categoryName || '其它'}
                     </span>
@@ -299,7 +232,7 @@ export default function Home() {
                     </span>
                   </div>
 
-                  <h2 className={`font-serif font-bold mb-4 leading-tight group-hover:text-[#3B82F6] transition-colors ${index === 0 && !searchTerm && !activeCategory ? 'text-4xl' : 'text-2xl'}`}>
+                  <h2 className={`font-serif font-bold mb-4 leading-tight group-hover:text-[#3B82F6] transition-colors ${index === 0 && !searchTerm && !activeCategoryId ? 'text-4xl' : 'text-2xl'}`}>
                     {post.title}
                   </h2>
                   
@@ -316,7 +249,7 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-4">
                       <button 
-                        onClick={(e) => handleLike(e, post)}
+                        onClick={handleLike}
                         className="flex items-center gap-1.5 transition-all relative z-10 text-gray-400 font-medium hover:text-red-400"
                       >
                         <Heart size={16} />
@@ -335,7 +268,7 @@ export default function Home() {
               </div>
               <p className="text-gray-500 font-medium">未找到符合您搜索条件的文章。</p>
               <button 
-                onClick={() => {setSearchTerm(''); setActiveCategory(null); setSearchParams({});}} 
+                onClick={() => {setSearchTerm(''); setActiveCategoryId(null); setSearchParams({});}}
                 className="mt-4 text-sm font-bold text-[#3B82F6] hover:underline underline-offset-4"
               >
                 清除所有过滤条件
@@ -346,7 +279,7 @@ export default function Home() {
           {hasMore && !searchTerm && (
             <div className="flex justify-center mt-12 pb-12">
               <button
-                onClick={() => fetchPosts(false)}
+                onClick={fetchMorePosts}
                 disabled={loadingMore}
                 className="flex items-center gap-2 px-8 py-3 bg-white border border-gray-100 rounded-2xl text-sm font-bold hover:bg-gray-50 hover:shadow-md transition-all disabled:opacity-50 group"
               >

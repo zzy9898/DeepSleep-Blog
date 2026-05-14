@@ -25,6 +25,13 @@ export interface Article {
   publishedAt: string | null;
 }
 
+export interface Category {
+  categoryId: number;
+  name: string;
+  description: string;
+  enabled: boolean;
+}
+
 export interface Tag {
   id: number;
   name: string;

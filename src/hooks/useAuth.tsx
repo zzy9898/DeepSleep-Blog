@@ -1,13 +1,20 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { UserProfile, AuthResponse } from '../types';
 import { dataService } from '../services/dataService';
+import { LoginRequest, RegisterInput } from '../api/types';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from '../api/tokenStore';
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
-  login: (data: any) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  login: (data: LoginRequest) => Promise<void>;
+  register: (data: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -39,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     if (token) {
       fetchProfile();
     } else {
@@ -47,31 +54,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchProfile]);
 
-  const login = async (data: any) => {
+  const login = async (data: LoginRequest) => {
     const auth: AuthResponse = await dataService.login(data);
-    localStorage.setItem('access_token', auth.accessToken);
-    localStorage.setItem('refresh_token', auth.refreshToken);
+    setTokens(auth.accessToken, auth.refreshToken);
     await fetchProfile();
   };
 
-  const register = async (data: any) => {
-    const auth: AuthResponse = await dataService.register(data);
-    localStorage.setItem('access_token', auth.accessToken);
-    localStorage.setItem('refresh_token', auth.refreshToken);
+  const register = async ({ displayName, ...credentials }: RegisterInput) => {
+    const auth: AuthResponse = await dataService.register(credentials);
+    setTokens(auth.accessToken, auth.refreshToken);
+    if (displayName?.trim()) {
+      await dataService.updateProfile({ nickname: displayName.trim() });
+    }
     await fetchProfile();
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
+    const refreshToken = getRefreshToken();
     if (refreshToken) {
       try {
-        await dataService.logout(refreshToken);
+        await dataService.logout({ refreshToken });
       } catch (e) {
         console.error('Logout error:', e);
       }
     }
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    clearTokens();
     setUser(null);
   };
 

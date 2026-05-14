@@ -1,43 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Edit, Trash2, Eye, PenTool, LayoutDashboard, FileText, Settings, ShieldCheck, EyeOff, Loader2, ArrowRight, Sparkles, Users, BarChart3, Database, ShieldAlert, CheckCircle2, Pin, MessageSquare, Ban, UserCheck, Save, Zap, Key, UserPlus, UserMinus, Heart, Send } from 'lucide-react';
+import { Edit, Trash2, Eye, PenTool, FileText, Settings, ShieldCheck, Loader2, ArrowRight, Sparkles, Users, BarChart3, MessageSquare, Heart } from 'lucide-react';
 import { dataService } from '../services/dataService';
-import { Article, UserThemeConfig, UserProfile, Comment, SystemSettings } from '../types';
+import { UserThemeConfig } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useDashboardData } from '../features/dashboard/useDashboardData';
+import { notifyUnavailable } from '../features/unavailable';
+
+const USER_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
+const USER_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const MAX_USER_IMAGE_SIZE = 5 * 1024 * 1024;
+
+function getUserImageValidationError(file: File) {
+  if (!USER_IMAGE_TYPES.has(file.type)) {
+    return '请选择 png、jpg 或 webp 格式的图片。';
+  }
+
+  if (file.size > MAX_USER_IMAGE_SIZE) {
+    return '图片不能超过 5MB，请压缩或更换图片。';
+  }
+
+  return null;
+}
 
 export default function Dashboard() {
   const { user, isAdmin, loading: authLoading, refreshProfile } = useAuth();
-  const [posts, setPosts] = useState<Article[]>([]);
-  const [likedPosts, setLikedPosts] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'design' | 'likes' | 'system'>('content');
 
   const [adminSubTab, setAdminSubTab] = useState<'overview' | 'users' | 'comments' | 'settings'>('overview');
-  const navigate = useNavigate();
-
-  // Admin Specific State
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [allComments, setAllComments] = useState<Comment[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
   const [savingSettings, setSavingSettings] = useState(false);
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    siteName: 'DeepSleep Blog',
-    siteSubtitle: '探索数字艺术与极简生活',
-    allowRegistration: true,
-    commentReviewRequired: false,
-    postsPerPage: 10,
-    sensitiveWords: []
-  });
+  const {
+    posts,
+    setPosts,
+    likedPosts,
+    loading,
+    allUsers,
+    categoryData,
+    systemSettings,
+    setSystemSettings,
+  } = useDashboardData(user, isAdmin, authLoading);
 
   // Design State
   const [bio, setBio] = useState(user?.bio || '');
   const [bannerUrl, setBannerUrl] = useState(user?.bannerUrl || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
-  const [themeConfig, setThemeConfig] = useState<UserThemeConfig>({
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState('');
+  const [themeConfig] = useState<UserThemeConfig>({
     accentColor: '#3B82F6',
     backgroundType: 'gradient' as 'gradient',
     fontFamily: 'sans' as 'sans',
@@ -50,78 +63,89 @@ export default function Dashboard() {
       setBio(user.bio || '');
       setBannerUrl(user.bannerUrl || '');
       setAvatarUrl(user.avatarUrl || '');
+      setAvatarFile(null);
+      setBackgroundImageFile(null);
+      setAvatarPreviewUrl('');
+      setBannerPreviewUrl('');
     }
   }, [user]);
 
-  const fetchDashboardData = async (isInitial = false) => {
-    if (!user) return;
-    if (isInitial) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      let fetchedPosts: Article[] = [];
-      if (isAdmin) {
-        // Admin: Fetch everything or subset
-        await dataService.pingAdmin(); // Just test admin access
-        const articlesRes = await dataService.getArticles({ size: 100 });
-        fetchedPosts = articlesRes.items;
-        
-        // Mocking additional admin data since doc doesn't have list endpoints for all users
-        setAllUsers([]);
-        setAllComments([]);
-        
-        // Calculate category distribution
-        const counts: Record<string, number> = {};
-        fetchedPosts.forEach(p => {
-          const cat = p.categoryName || '其它';
-          counts[cat] = (counts[cat] || 0) + 1;
-        });
-        setCategoryData(Object.entries(counts).map(([name, value]) => ({ name, value })));
-      } else {
-        const res = await dataService.getMyArticles({ size: 100 });
-        fetchedPosts = res.items;
-        setLikedPosts([]); // Like API not in doc
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
       }
-
-      setPosts(fetchedPosts);
-      setHasMore(false);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+    };
+  }, [avatarPreviewUrl]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      navigate('/auth');
+    return () => {
+      if (bannerPreviewUrl) {
+        URL.revokeObjectURL(bannerPreviewUrl);
+      }
+    };
+  }, [bannerPreviewUrl]);
+
+  const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const validationError = getUserImageValidationError(file);
+    if (validationError) {
+      alert(validationError);
+      event.target.value = '';
       return;
     }
-    fetchDashboardData(true);
-  }, [user, isAdmin, authLoading]);
+
+    setAvatarFile(file);
+    setAvatarPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleBackgroundImageFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const validationError = getUserImageValidationError(file);
+    if (validationError) {
+      alert(validationError);
+      event.target.value = '';
+      return;
+    }
+
+    setBackgroundImageFile(file);
+    setBannerPreviewUrl(URL.createObjectURL(file));
+  };
 
   const handleSaveDesign = async () => {
     if (!user) return;
     setSavingDesign(true);
     try {
-      await dataService.updateProfile(user.id, {
+      await dataService.updateProfile({
         bio,
-        bannerUrl,
-        avatarUrl
       });
+
+      if (avatarFile) {
+        const avatar = await dataService.updateAvatar(avatarFile);
+        setAvatarUrl(avatar.avatarUrl);
+      }
+
+      if (backgroundImageFile) {
+        const backgroundImage = await dataService.updateBackgroundImage(backgroundImageFile);
+        setBannerUrl(backgroundImage.backgroundImageUrl);
+      }
+
       await refreshProfile();
-      alert('空间装饰已保存！');
+      alert('空间资料已保存。');
     } catch (error) {
       console.error("Error saving design:", error);
+      alert('保存失败，请稍后重试。');
     } finally {
       setSavingDesign(false);
     }
   };
+
+  const displayAvatarUrl = avatarPreviewUrl || avatarUrl;
+  const displayBannerUrl = bannerPreviewUrl || bannerUrl;
 
   const handleDelete = async (postId: number) => {
     if (window.confirm("确定要删除这篇文章吗？操作不可恢复。")) {
@@ -134,66 +158,17 @@ export default function Dashboard() {
     }
   };
 
-  const handleTogglePin = async (post: Article) => {
-    alert('置顶功能暂未开放');
-  };
-
-  const handleToggleHide = async (post: Article) => {
-    if (!isAdmin) return;
-    try {
-      const newStatus = post.status === 2 ? 1 : 2;
-      await dataService.updateArticle(post.id, { visibility: newStatus === 1 ? 0 : 1 });
-      setPosts(posts.map(p => p.id === post.id ? { ...p, status: newStatus } : p));
-    } catch (error) {
-      console.error("Error toggling post visibility:", error);
-    }
-  };
-
   const handleUpdateSettings = async () => {
     setSavingSettings(true);
     try {
-      // await dataService.updateSettings(systemSettings);
+      await dataService.updateSettings(systemSettings);
       alert('系统设置已保存');
     } catch (error) {
       console.error("Error updating settings:", error);
+      alert('系统设置保存失败，请稍后重试。');
     } finally {
       setSavingSettings(false);
     }
-  };
-
-  const handleDeleteComment = async (commentId: number) => {
-    if (!isAdmin) return;
-    if (window.confirm("确定要删除这条评论吗？")) {
-      try {
-        await dataService.deleteComment(commentId);
-        setAllComments(allComments.filter(c => c.id !== commentId));
-      } catch (error) {
-        console.error("Error deleting comment:", error);
-      }
-    }
-  };
-
-  const handleToggleBan = async (userProfile: UserProfile) => {
-    if (!isAdmin) return;
-    if (userProfile.role === 'admin') {
-      alert('无法封禁管理员账号。');
-      return;
-    }
-    alert('封禁功能暂由后端管理');
-  };
-
-  const handleToggleRole = async (userProfile: UserProfile) => {
-    if (!isAdmin) return;
-    if (userProfile.id === user?.id) {
-      alert('您不能修改自己的角色。');
-      return;
-    }
-    alert('角色变更功能暂未开放');
-  };
-
-  const handleResetPassword = async (username: string) => {
-    if (!isAdmin) return;
-    alert(`已为用户 ${username} 重置密码请求已发送。`);
   };
 
   const handleDeleteUser = async (uid: number) => {
@@ -202,9 +177,7 @@ export default function Dashboard() {
       alert('您不能删除自己的账号。');
       return;
     }
-    if (window.confirm("确定要删除此用户吗？")) {
-      alert('用户删除功能暂由后端管理');
-    }
+    notifyUnavailable('用户删除功能');
   };
 
   if (authLoading) return <div className="p-20 text-center text-[#3B82F6] font-bold">正在加载您的个人档案...</div>;
@@ -406,7 +379,7 @@ export default function Dashboard() {
                       <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 scale-110 opacity-50">
                         <Heart size={32} className="text-gray-300" />
                       </div>
-                      <p className="text-gray-400 font-serif italic mb-4">笔尖所及，心之所向。您还没有收藏任何文章。</p>
+                      <p className="text-gray-400 font-serif italic mb-4">喜欢列表当前暂不可用，后端接口尚未开放。</p>
                       <Link to="/" className="text-xs font-bold text-[#3B82F6] uppercase tracking-widest hover:underline">去发现文章看看</Link>
                    </div>
                  )}
@@ -436,24 +409,28 @@ export default function Dashboard() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">头像 URL</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">头像图片</label>
                     <input 
-                      type="text" 
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="图片 URL"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3B82F6] transition-all"
+                      type="file"
+                      accept={USER_IMAGE_ACCEPT}
+                      onChange={handleAvatarFileChange}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3B82F6] transition-all file:mr-3 file:border-0 file:bg-[#3B82F6] file:text-white file:rounded-lg file:px-3 file:py-1.5 file:text-xs file:font-bold"
                     />
+                    <p className="text-[10px] text-gray-400">
+                      支持 png、jpg、webp，最大 5MB。{avatarFile ? `已选择：${avatarFile.name}` : avatarUrl ? '当前已有头像。' : '当前未设置头像。'}
+                    </p>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">封面图 URL</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">背景图片</label>
                     <input 
-                      type="text" 
-                      value={bannerUrl}
-                      onChange={(e) => setBannerUrl(e.target.value)}
-                      placeholder="图片 URL"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3B82F6] transition-all"
+                      type="file"
+                      accept={USER_IMAGE_ACCEPT}
+                      onChange={handleBackgroundImageFileChange}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3B82F6] transition-all file:mr-3 file:border-0 file:bg-[#3B82F6] file:text-white file:rounded-lg file:px-3 file:py-1.5 file:text-xs file:font-bold"
                     />
+                    <p className="text-[10px] text-gray-400">
+                      支持 png、jpg、webp，最大 5MB。{backgroundImageFile ? `已选择：${backgroundImageFile.name}` : bannerUrl ? '当前已有背景图。' : '当前未设置背景图。'}
+                    </p>
                   </div>
                 </div>
               </section>
@@ -464,7 +441,7 @@ export default function Dashboard() {
                 className="w-full py-4 bg-[#3B82F6] text-white rounded-2xl font-extrabold text-sm uppercase tracking-[0.2em] shadow-lg shadow-blue-100 hover:bg-[#2563EB] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {savingDesign ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                {savingDesign ? '正在部署空间设计...' : '立即应用装饰'}
+                {savingDesign ? '正在保存...' : '保存空间资料'}
               </button>
             </div>
           </div>
@@ -477,12 +454,16 @@ export default function Dashboard() {
                 background: themeConfig.backgroundType === 'mesh' ? `radial-gradient(at 0% 0%, ${themeConfig.accentColor}33 0, transparent 50%), #fff` : themeConfig.backgroundType === 'gradient' ? `linear-gradient(to bottom, ${themeConfig.accentColor}11, #fff)` : '#fff'
               }}
             >
-               <div className="absolute top-0 left-0 w-full h-24 bg-cover bg-center brightness-90 shadow-inner" style={{ backgroundImage: `url(${bannerUrl || 'https://picsum.photos/seed/curation/800/400'})` }} />
+               <div className="absolute top-0 left-0 w-full h-24 bg-cover bg-center brightness-90 shadow-inner" style={{ backgroundImage: `url(${displayBannerUrl || 'https://picsum.photos/seed/curation/800/400'})` }} />
                <div className="relative pt-16 flex flex-col items-center">
                  <div className={`w-16 h-16 rounded-full border-2 border-white mb-3 shadow-md overflow-hidden ${themeConfig.cardStyle === 'brutal' ? 'border-black' : ''}`}>
-                    <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-500 font-bold">
-                       {(user?.displayName || 'D')[0]}
-                    </div>
+                    {displayAvatarUrl ? (
+                      <img src={displayAvatarUrl} alt={user?.displayName || '头像'} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-500 font-bold">
+                         {(user?.displayName || 'D')[0]}
+                      </div>
+                    )}
                  </div>
                  <p className="font-bold text-lg mb-1" style={{ color: themeConfig.accentColor }}>{user?.displayName}</p>
                  <p className="text-[10px] text-gray-400 line-clamp-1 italic px-8 text-center">{bio || '尚未编写简介...'}</p>
@@ -591,7 +572,20 @@ export default function Dashboard() {
                       ))}
                     </tbody>
                   </table>
+                  {allUsers.length === 0 && (
+                    <div className="p-12 text-center text-sm text-gray-400 font-medium">
+                      用户管理列表当前暂不可用，后端接口尚未开放。
+                    </div>
+                  )}
                 </div>
+             </div>
+           )}
+
+           {adminSubTab === 'comments' && (
+             <div className="bento-card animate-in fade-in duration-300 text-center py-16">
+                <MessageSquare className="mx-auto mb-4 text-gray-300" size={36} />
+                <h2 className="text-lg font-bold text-gray-900 mb-2">评论治理当前暂不可用</h2>
+                <p className="text-sm text-gray-400">评论列表、删除和审核相关后端接口尚未开放。</p>
              </div>
            )}
 
@@ -608,7 +602,13 @@ export default function Dashboard() {
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-xs font-bold outline-none border focus:border-purple-300"
                     />
                   </div>
-                  <button onClick={handleUpdateSettings} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest">保存设置</button>
+                  <button
+                    onClick={handleUpdateSettings}
+                    disabled={savingSettings}
+                    className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {savingSettings ? '保存中...' : '保存设置'}
+                  </button>
                 </div>
              </div>
            )}

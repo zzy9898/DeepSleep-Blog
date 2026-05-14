@@ -2,6 +2,15 @@ import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Terminal } from 'lucide-react';
+import { ApiFieldErrors, getApiErrorMessage, getApiFieldErrors } from '../api/errors';
+
+function removeFieldError(fieldErrors: ApiFieldErrors, fields: string[]): ApiFieldErrors {
+  const nextFieldErrors = { ...fieldErrors };
+  fields.forEach((field) => {
+    delete nextFieldErrors[field];
+  });
+  return nextFieldErrors;
+}
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -9,13 +18,33 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<ApiFieldErrors>({});
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
+  const updateEmail = (value: string) => {
+    setEmail(value);
+    setError('');
+    setFieldErrors((current) => removeFieldError(current, ['username']));
+  };
+
+  const updatePassword = (value: string) => {
+    setPassword(value);
+    setError('');
+    setFieldErrors((current) => removeFieldError(current, ['password']));
+  };
+
+  const updateDisplayName = (value: string) => {
+    setDisplayName(value);
+    setError('');
+    setFieldErrors((current) => removeFieldError(current, ['nickname', 'displayName']));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -25,8 +54,9 @@ export default function AuthPage() {
         await register({ username: email, password, displayName });
       }
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err?.msg || err?.message || '操作失败');
+    } catch (err: unknown) {
+      setFieldErrors(getApiFieldErrors(err));
+      setError(getApiErrorMessage(err, '操作失败'));
     } finally {
       setLoading(false);
     }
@@ -57,38 +87,59 @@ export default function AuthPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {!isLogin && (
           <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <User className="absolute left-4 top-6 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="显示名称"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#3B82F6] focus:bg-white outline-none transition-all text-sm"
+              onChange={(e) => updateDisplayName(e.target.value)}
+              aria-invalid={Boolean(fieldErrors.nickname || fieldErrors.displayName)}
+              aria-describedby={fieldErrors.nickname || fieldErrors.displayName ? 'display-name-error' : undefined}
+              className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all text-sm ${fieldErrors.nickname || fieldErrors.displayName ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
               required
             />
+            {(fieldErrors.nickname || fieldErrors.displayName) && (
+              <p id="display-name-error" className="mt-2 text-[11px] font-bold text-red-600">
+                {fieldErrors.nickname || fieldErrors.displayName}
+              </p>
+            )}
           </div>
         )}
         <div className="relative">
-          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Mail className="absolute left-4 top-6 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
             placeholder="用户名"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#3B82F6] focus:bg-white outline-none transition-all text-sm"
+            onChange={(e) => updateEmail(e.target.value)}
+            aria-invalid={Boolean(fieldErrors.username)}
+            aria-describedby={fieldErrors.username ? 'username-error' : undefined}
+            className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all text-sm ${fieldErrors.username ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
             required
           />
+          {fieldErrors.username && (
+            <p id="username-error" className="mt-2 text-[11px] font-bold text-red-600">
+              {fieldErrors.username}
+            </p>
+          )}
         </div>
         <div className="relative">
-          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Lock className="absolute left-4 top-6 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="password"
             placeholder="密码"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#3B82F6] focus:bg-white outline-none transition-all text-sm"
+            onChange={(e) => updatePassword(e.target.value)}
+            aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+            className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all text-sm ${fieldErrors.password ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
             required
           />
+          {fieldErrors.password && (
+            <p id="password-error" className="mt-2 text-[11px] font-bold text-red-600">
+              {fieldErrors.password}
+            </p>
+          )}
         </div>
 
         <button
