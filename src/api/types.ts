@@ -10,10 +10,7 @@ export interface LoginRequest {
 }
 
 export type RegisterRequest = LoginRequest;
-
-export interface RegisterInput extends RegisterRequest {
-  displayName?: string;
-}
+export type RegisterInput = RegisterRequest;
 
 export interface LogoutRequest {
   refreshToken: string;

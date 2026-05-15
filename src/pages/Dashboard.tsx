@@ -2,7 +2,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Edit, Trash2, Eye, PenTool, FileText, Settings, ShieldCheck, Loader2, ArrowRight, Sparkles, Users, BarChart3, MessageSquare, Heart } from 'lucide-react';
+import { AlertCircle, Edit, Trash2, Eye, PenTool, FileText, Settings, ShieldCheck, Loader2, ArrowRight, Sparkles, Users, BarChart3, MessageSquare, Heart } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import { UserThemeConfig } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -35,6 +35,7 @@ export default function Dashboard() {
     posts,
     setPosts,
     likedPosts,
+    errorMessage,
     loading,
     allUsers,
     categoryData,
@@ -293,6 +294,12 @@ export default function Dashboard() {
             </div>
             
             <div className="overflow-x-auto">
+              {errorMessage && (
+                <div className="mx-6 mt-6 flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                  <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/50">
@@ -449,13 +456,14 @@ export default function Dashboard() {
           <div className="space-y-6">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">效果初探</h3>
             <div 
-              className={`bento-card h-[320px] relative overflow-hidden transition-all duration-500`}
+              className="group bento-card h-[320px] relative overflow-hidden transition-all duration-500"
               style={{
                 background: themeConfig.backgroundType === 'mesh' ? `radial-gradient(at 0% 0%, ${themeConfig.accentColor}33 0, transparent 50%), #fff` : themeConfig.backgroundType === 'gradient' ? `linear-gradient(to bottom, ${themeConfig.accentColor}11, #fff)` : '#fff'
               }}
             >
-               <div className="absolute top-0 left-0 w-full h-24 bg-cover bg-center brightness-90 shadow-inner" style={{ backgroundImage: `url(${displayBannerUrl || 'https://picsum.photos/seed/curation/800/400'})` }} />
-               <div className="relative pt-16 flex flex-col items-center">
+               <div className="absolute left-0 top-0 h-40 w-full bg-cover bg-center brightness-90 shadow-inner transition-all duration-700 ease-out group-hover:h-full group-hover:brightness-75" style={{ backgroundImage: `url(${displayBannerUrl || 'https://picsum.photos/seed/curation/800/400'})` }} />
+               <div className="absolute inset-0 bg-white/0 transition-colors duration-700 group-hover:bg-black/20" />
+               <div className="relative pt-28 flex flex-col items-center">
                  <div className={`w-16 h-16 rounded-full border-2 border-white mb-3 shadow-md overflow-hidden ${themeConfig.cardStyle === 'brutal' ? 'border-black' : ''}`}>
                     {displayAvatarUrl ? (
                       <img src={displayAvatarUrl} alt={user?.displayName || '头像'} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -465,12 +473,12 @@ export default function Dashboard() {
                       </div>
                     )}
                  </div>
-                 <p className="font-bold text-lg mb-1" style={{ color: themeConfig.accentColor }}>{user?.displayName}</p>
-                 <p className="text-[10px] text-gray-400 line-clamp-1 italic px-8 text-center">{bio || '尚未编写简介...'}</p>
+                 <p className="font-bold text-lg mb-1 text-[#3B82F6] transition-colors duration-500 group-hover:text-white">{user?.displayName}</p>
+                 <p className="text-[10px] text-gray-400 line-clamp-1 italic px-8 text-center transition-colors duration-500 group-hover:text-white/80">{bio || '尚未编写简介...'}</p>
                </div>
                
                <div className="absolute bottom-4 left-0 w-full text-center">
-                 <Link to={`/profile/${user?.id}`} target="_blank" className="text-[10px] font-bold text-[#3B82F6] hover:underline uppercase tracking-widest">
+                 <Link to={`/profile/${user?.id}`} target="_blank" className="text-[10px] font-bold text-[#3B82F6] hover:underline uppercase tracking-widest transition-colors duration-500 group-hover:text-white">
                    查看全尺寸动态预览
                  </Link>
                </div>

@@ -60,12 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfile();
   };
 
-  const register = async ({ displayName, ...credentials }: RegisterInput) => {
-    const auth: AuthResponse = await dataService.register(credentials);
+  const register = async (data: RegisterInput) => {
+    const auth: AuthResponse = await dataService.register(data);
     setTokens(auth.accessToken, auth.refreshToken);
-    if (displayName?.trim()) {
-      await dataService.updateProfile({ nickname: displayName.trim() });
-    }
     await fetchProfile();
   };
 

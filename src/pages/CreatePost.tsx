@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import ReactMarkdown from 'react-markdown';
 import { AlertCircle, Eye, Edit3, Send, Hash, ChevronDown } from 'lucide-react';
+import MarkdownRenderer from '../components/markdown/MarkdownRenderer';
 import { useCategories } from '../features/articles/useCategories';
 import { usePostEditor } from '../features/articles/usePostEditor';
 
@@ -71,9 +71,9 @@ export default function CreatePost() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-6">
           {isPreview ? (
-            <div className="bento-card !p-10 min-h-[600px] prose prose-stone max-w-none">
+            <div className="bento-card !p-10 min-h-[600px]">
               <h1 className="text-4xl font-extrabold mb-8">{title || '无标题文章'}</h1>
-              <ReactMarkdown>{content || '*暂无内容...*'}</ReactMarkdown>
+              <MarkdownRenderer content={content} />
             </div>
           ) : (
             <div className="bento-card !p-8 space-y-6 focus-within:ring-2 focus-within:ring-[#3B82F6]/20 transition-all">

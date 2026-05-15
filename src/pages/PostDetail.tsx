@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 import { MessageSquare, Heart, Share2, Send, Trash2, Edit, ChevronLeft, Clock, ArrowUp, ArrowRight } from 'lucide-react';
+import MarkdownRenderer from '../components/markdown/MarkdownRenderer';
 import { dataService } from '../services/dataService';
 import { calculateReadTime } from '../features/articles/article.utils';
 import { useArticleDetail } from '../features/articles/useArticleDetail';
@@ -188,9 +188,7 @@ export default function PostDetail() {
           </div>
         </header>
 
-        <div className="prose prose-stone max-w-none text-[#1F2937] leading-relaxed text-lg">
-          <ReactMarkdown>{post.content}</ReactMarkdown>
-        </div>
+        <MarkdownRenderer content={post.content} />
 
         <div className="mt-16 flex gap-2 flex-wrap">
           {post.tags.map((tag) => (

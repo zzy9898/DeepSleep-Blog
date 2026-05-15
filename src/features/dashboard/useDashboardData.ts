@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getApiErrorMessage } from '../../api/errors';
 import { dataService } from '../../services/dataService';
 import { Article, Comment, SystemSettings, UserProfile } from '../../types';
 
@@ -14,6 +15,7 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
   const [likedPosts, setLikedPosts] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [allComments, setAllComments] = useState<Comment[]>([]);
@@ -37,11 +39,11 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
       }
 
       try {
+        setErrorMessage(null);
         let fetchedPosts: Article[] = [];
         if (isAdmin) {
           await dataService.pingAdmin();
-          const articlesRes = await dataService.getArticles({ size: 100 });
-          fetchedPosts = articlesRes.items;
+          fetchedPosts = await dataService.getAllArticles();
 
           setAllUsers([]);
           setAllComments([]);
@@ -53,8 +55,7 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
           });
           setCategoryData(Object.entries(counts).map(([name, value]) => ({ name, value })));
         } else {
-          const res = await dataService.getMyArticles({ size: 100 });
-          fetchedPosts = res.items;
+          fetchedPosts = await dataService.getAllMyArticles();
           setLikedPosts([]);
         }
 
@@ -62,6 +63,7 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
         setHasMore(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        setErrorMessage(getApiErrorMessage(error, '暂时无法加载文章列表，请稍后再试。'));
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -83,6 +85,7 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
     posts,
     setPosts,
     likedPosts,
+    errorMessage,
     loading,
     loadingMore,
     hasMore,

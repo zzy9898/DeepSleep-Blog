@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Terminal } from 'lucide-react';
+import { Lock, User, Terminal } from 'lucide-react';
 import { ApiFieldErrors, getApiErrorMessage, getApiFieldErrors } from '../api/errors';
 
 function removeFieldError(fieldErrors: ApiFieldErrors, fields: string[]): ApiFieldErrors {
@@ -14,17 +14,16 @@ function removeFieldError(fieldErrors: ApiFieldErrors, fields: string[]): ApiFie
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ApiFieldErrors>({});
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const updateEmail = (value: string) => {
-    setEmail(value);
+  const updateUsername = (value: string) => {
+    setUsername(value);
     setError('');
     setFieldErrors((current) => removeFieldError(current, ['username']));
   };
@@ -35,12 +34,6 @@ export default function AuthPage() {
     setFieldErrors((current) => removeFieldError(current, ['password']));
   };
 
-  const updateDisplayName = (value: string) => {
-    setDisplayName(value);
-    setError('');
-    setFieldErrors((current) => removeFieldError(current, ['nickname', 'displayName']));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -49,9 +42,9 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        await login({ username: email, password });
+        await login({ username, password });
       } else {
-        await register({ username: email, password, displayName });
+        await register({ username, password });
       }
       navigate('/dashboard');
     } catch (err: unknown) {
@@ -85,33 +78,13 @@ export default function AuthPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {!isLogin && (
-          <div className="relative">
-            <User className="absolute left-4 top-6 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="显示名称"
-              value={displayName}
-              onChange={(e) => updateDisplayName(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.nickname || fieldErrors.displayName)}
-              aria-describedby={fieldErrors.nickname || fieldErrors.displayName ? 'display-name-error' : undefined}
-              className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all text-sm ${fieldErrors.nickname || fieldErrors.displayName ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
-              required
-            />
-            {(fieldErrors.nickname || fieldErrors.displayName) && (
-              <p id="display-name-error" className="mt-2 text-[11px] font-bold text-red-600">
-                {fieldErrors.nickname || fieldErrors.displayName}
-              </p>
-            )}
-          </div>
-        )}
         <div className="relative">
-          <Mail className="absolute left-4 top-6 -translate-y-1/2 text-gray-400" size={18} />
+          <User className="absolute left-4 top-6 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
             placeholder="用户名"
-            value={email}
-            onChange={(e) => updateEmail(e.target.value)}
+            value={username}
+            onChange={(e) => updateUsername(e.target.value)}
             aria-invalid={Boolean(fieldErrors.username)}
             aria-describedby={fieldErrors.username ? 'username-error' : undefined}
             className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all text-sm ${fieldErrors.username ? 'border-red-200 focus:ring-red-200 text-red-700' : 'border-gray-100 focus:ring-[#3B82F6]'}`}
