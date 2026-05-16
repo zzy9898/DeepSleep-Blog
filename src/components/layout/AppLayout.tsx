@@ -1,7 +1,24 @@
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import DesktopPet from '../DesktopPet';
 import Navbar from './Navbar';
 
 export default function AppLayout() {
+  const [isPetVisible, setIsPetVisible] = useState(() => localStorage.getItem('petVisible') !== 'false');
+
+  useEffect(() => {
+    const handleTogglePet = () => {
+      setIsPetVisible(current => {
+        const next = !current;
+        localStorage.setItem('petVisible', String(next));
+        return next;
+      });
+    };
+
+    window.addEventListener('toggle-pet', handleTogglePet);
+    return () => window.removeEventListener('toggle-pet', handleTogglePet);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#fafafa] flex overflow-x-hidden antialiased relative">
       <div className="fixed top-[-10%] left-[-5%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[120px] pointer-events-none animate-pulse" />
@@ -16,6 +33,7 @@ export default function AppLayout() {
         </header>
         <Outlet />
       </main>
+      {isPetVisible && <DesktopPet />}
     </div>
   );
 }

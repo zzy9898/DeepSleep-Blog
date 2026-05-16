@@ -28,6 +28,7 @@ function getUserImageValidationError(file: File) {
 export default function Dashboard() {
   const { user, isAdmin, loading: authLoading, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'content' | 'design' | 'likes' | 'system'>('content');
+  const [isPetActive, setIsPetActive] = useState(() => localStorage.getItem('petVisible') !== 'false');
 
   const [adminSubTab, setAdminSubTab] = useState<'overview' | 'users' | 'comments' | 'settings'>('overview');
   const [savingSettings, setSavingSettings] = useState(false);
@@ -181,6 +182,11 @@ export default function Dashboard() {
     notifyUnavailable('用户删除功能');
   };
 
+  const togglePet = () => {
+    window.dispatchEvent(new Event('toggle-pet'));
+    setIsPetActive(current => !current);
+  };
+
   if (authLoading) return <div className="p-20 text-center text-[#3B82F6] font-bold">正在加载您的个人档案...</div>;
 
   return (
@@ -224,6 +230,18 @@ export default function Dashboard() {
               <ShieldCheck size={14} /> 系统管理
             </button>
           )}
+          <div className="mx-2 h-6 w-px self-center bg-gray-200" />
+          <button
+            type="button"
+            onClick={togglePet}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              isPetActive ? 'text-blue-500 hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-100'
+            }`}
+            title={isPetActive ? '隐藏桌宠' : '显示桌宠'}
+          >
+            <Sparkles size={14} className={isPetActive ? 'animate-pulse' : ''} />
+            {isPetActive ? '桌宠已开启' : '桌宠已隐藏'}
+          </button>
         </div>
       </header>
 
