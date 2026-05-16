@@ -1,12 +1,13 @@
 import { Article, Category, UserProfile } from '../types';
-import { ArticleDto, CategoryDto, UserDto } from './types';
+import { ArticleCommentDto, ArticleDto, CategoryDto, CommentReplyDto, UserDto } from './types';
+import { UserRoleCode } from './enums';
 
 export function mapUser(dto: UserDto): UserProfile {
   return {
     id: dto.id,
     username: dto.username,
     displayName: dto.nickname || dto.username,
-    role: dto.role === 0 ? 'admin' : 'user',
+    role: dto.role === UserRoleCode.Admin ? 'admin' : 'user',
     status: dto.status ?? 0,
     createdAt: dto.createdAt || '',
     bio: dto.bio || '',
@@ -31,9 +32,40 @@ export function mapArticle(dto: ArticleDto): Article {
     viewCount: dto.viewCount ?? 0,
     likeCount: dto.likeCount ?? 0,
     commentCount: dto.commentCount ?? 0,
+    liked: dto.liked ?? false,
     createdAt: dto.createdAt || '',
     updatedAt: dto.updatedAt || '',
     publishedAt: dto.publishedAt ?? null,
+  };
+}
+
+export function mapArticleComment(dto: ArticleCommentDto, articleId: number) {
+  return {
+    id: dto.id,
+    articleId,
+    authorId: dto.commentUser.id,
+    authorName: dto.commentUser.nickname || `用户 ${dto.commentUser.id}`,
+    authorAvatarUrl: dto.commentUser.avatarUrl || undefined,
+    content: dto.content,
+    replyCount: dto.replyCount ?? 0,
+    deletable: dto.deletable ?? false,
+    createdAt: dto.createdAt,
+  };
+}
+
+export function mapCommentReply(dto: CommentReplyDto) {
+  return {
+    id: dto.id,
+    articleId: dto.articleId,
+    rootId: dto.rootId,
+    parentId: dto.parentId,
+    authorId: dto.user.id,
+    authorName: dto.user.nickname || `用户 ${dto.user.id}`,
+    authorAvatarUrl: dto.user.avatarUrl || undefined,
+    replyToName: dto.replyToUser?.nickname || undefined,
+    content: dto.content,
+    deletable: dto.deletable ?? false,
+    createdAt: dto.createdAt,
   };
 }
 

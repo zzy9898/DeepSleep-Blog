@@ -6,7 +6,9 @@ import { useAuth } from '../hooks/useAuth';
 import { CATEGORY_COLORS, getCategoryAccent } from '../features/articles/article.constants';
 import { useArticleList } from '../features/articles/useArticleList';
 import { useCategories } from '../features/articles/useCategories';
-import { notifyUnavailable } from '../features/unavailable';
+import { dataService } from '../services/dataService';
+import { Article } from '../types';
+import { getApiErrorMessage } from '../api/errors';
 
 export default function Home() {
   const { user, isAdmin } = useAuth();
@@ -22,10 +24,11 @@ export default function Home() {
     setActiveCategoryId,
     hasMore,
     fetchMorePosts,
+    setPosts,
   } = useArticleList(searchParams);
   const { categories } = useCategories();
 
-  const handleLike = async (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent, post: Article) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -34,7 +37,26 @@ export default function Home() {
       navigate('/auth');
       return;
     }
-    notifyUnavailable('点赞功能');
+
+    const nextLiked = !post.liked;
+    setPosts((current) => current.map((item) => (
+      item.id === post.id
+        ? { ...item, liked: nextLiked, likeCount: Math.max(0, item.likeCount + (nextLiked ? 1 : -1)) }
+        : item
+    )));
+
+    try {
+      if (nextLiked) {
+        await dataService.likeArticle(post.id);
+      } else {
+        await dataService.unlikeArticle(post.id);
+      }
+    } catch (error) {
+      setPosts((current) => current.map((item) => (
+        item.id === post.id ? { ...item, liked: post.liked, likeCount: post.likeCount } : item
+      )));
+      alert(getApiErrorMessage(error, '点赞操作失败，请稍后再试。'));
+    }
   };
 
   const [quote, setQuote] = useState({ text: '', author: '' });
@@ -249,10 +271,12 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-4">
                       <button 
-                        onClick={handleLike}
-                        className="flex items-center gap-1.5 transition-all relative z-10 text-gray-400 font-medium hover:text-red-400"
+                        onClick={(event) => handleLike(event, post)}
+                        className={`flex items-center gap-1.5 transition-all relative z-10 font-medium ${
+                          post.liked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'
+                        }`}
                       >
-                        <Heart size={16} />
+                        <Heart size={16} className={post.liked ? 'fill-red-500' : ''} />
                         <span className="text-[11px]">{post.likeCount || 0}</span>
                       </button>
                       <ChevronRight className="text-gray-300 group-hover:text-[#3B82F6] group-hover:translate-x-1 transition-all" size={20} />

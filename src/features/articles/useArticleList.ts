@@ -55,6 +55,7 @@ export function useArticleList(searchParams: URLSearchParams) {
 
   return {
     posts,
+    setPosts,
     filteredPosts: posts,
     loading,
     loadingMore,

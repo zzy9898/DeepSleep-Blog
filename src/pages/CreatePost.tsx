@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AlertCircle, Eye, Edit3, Send, Hash, ChevronDown } from 'lucide-react';
 import MarkdownRenderer from '../components/markdown/MarkdownRenderer';
+import { ArticleStatusCode } from '../api/enums';
 import { useCategories } from '../features/articles/useCategories';
 import { usePostEditor } from '../features/articles/usePostEditor';
 
@@ -173,15 +174,15 @@ export default function CreatePost() {
               <div className="flex gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100">
                 <button
                   type="button"
-                  onClick={() => setStatus(1)}
-                  className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${status === 1 ? 'bg-white shadow-sm text-[#3B82F6]' : 'text-gray-400 hover:text-gray-600'}`}
+                  onClick={() => setStatus(ArticleStatusCode.Published)}
+                  className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${status === ArticleStatusCode.Published ? 'bg-white shadow-sm text-[#3B82F6]' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   公开
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStatus(0)}
-                  className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${status === 0 ? 'bg-white shadow-sm text-[#3B82F6]' : 'text-gray-400 hover:text-gray-600'}`}
+                  onClick={() => setStatus(ArticleStatusCode.Draft)}
+                  className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${status === ArticleStatusCode.Draft ? 'bg-white shadow-sm text-[#3B82F6]' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   草稿
                 </button>

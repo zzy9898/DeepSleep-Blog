@@ -87,6 +87,14 @@ export async function unpublishArticle(id: number): Promise<void> {
   await apiClient.post(`/articles/${id}/unpublish`);
 }
 
+export async function likeArticle(id: number): Promise<void> {
+  await apiClient.post(`/api/articles/${id}/like`);
+}
+
+export async function unlikeArticle(id: number): Promise<void> {
+  await apiClient.delete(`/api/articles/${id}/like`);
+}
+
 export async function getMyArticles(params: ArticleListParams = {}): Promise<PageResponse<Article>> {
   const response = await unwrapData(apiClient.get<ApiResponse<PageResponse<ArticleDto>>>('/articles/mine', { params }));
   return mapArticlePage(response);

@@ -10,9 +10,8 @@ import {
   getRefreshToken,
   setTokens,
 } from './tokenStore';
+import { BUSINESS_CODE } from './businessCodes';
 
-const SUCCESS_CODE = 0;
-const TOKEN_EXPIRED_CODE = 11004;
 const DEFAULT_API_BASE_URL = '/api';
 
 export const apiClient: AxiosInstance = axios.create({
@@ -66,11 +65,11 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   async (response) => {
     const res = response.data as ApiResponse<unknown>;
-    if (res.code === TOKEN_EXPIRED_CODE) {
+    if (res.code === BUSINESS_CODE.AUTH_ACCESS_TOKEN_EXPIRED) {
       return refreshTokenAndRetry(response.config as RetryableRequestConfig);
     }
 
-    if (res.code !== SUCCESS_CODE) {
+    if (res.code !== BUSINESS_CODE.SUCCESS) {
       return Promise.reject(res);
     }
     return response;
@@ -79,7 +78,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as RetryableRequestConfig | undefined;
     const res = error.response?.data as ApiResponse<unknown> | undefined;
 
-    if (res?.code === TOKEN_EXPIRED_CODE && originalRequest) {
+    if (res?.code === BUSINESS_CODE.AUTH_ACCESS_TOKEN_EXPIRED && originalRequest) {
       return refreshTokenAndRetry(originalRequest);
     }
 

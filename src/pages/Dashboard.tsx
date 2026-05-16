@@ -8,6 +8,7 @@ import { UserThemeConfig } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useDashboardData } from '../features/dashboard/useDashboardData';
 import { notifyUnavailable } from '../features/unavailable';
+import { getApiErrorMessage } from '../api/errors';
 
 const USER_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
 const USER_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -140,7 +141,7 @@ export default function Dashboard() {
       alert('空间资料已保存。');
     } catch (error) {
       console.error("Error saving design:", error);
-      alert('保存失败，请稍后重试。');
+      alert(getApiErrorMessage(error, '保存失败，请稍后重试。'));
     } finally {
       setSavingDesign(false);
     }

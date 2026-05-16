@@ -20,6 +20,7 @@ export interface Article {
   viewCount: number;
   likeCount: number;
   commentCount: number;
+  liked: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
@@ -60,8 +61,13 @@ export interface Comment {
   articleId: number;
   authorName: string;
   authorId?: number;
+  authorAvatarUrl?: string;
   content: string;
+  rootId?: number;
   parentId?: number;
+  replyToName?: string;
+  replyCount?: number;
+  deletable: boolean;
   createdAt: string;
   replies?: Comment[];
 }

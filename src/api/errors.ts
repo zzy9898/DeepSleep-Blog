@@ -1,3 +1,5 @@
+import { getBusinessCodeMessage } from './businessCodes';
+
 export type ApiFieldErrors = Record<string, string>;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -38,6 +40,13 @@ export function getApiFieldErrors(error: unknown): ApiFieldErrors {
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (isPlainObject(error) && typeof error.msg === 'string' && error.msg.trim()) {
     return error.msg;
+  }
+
+  if (isPlainObject(error)) {
+    const codeMessage = getBusinessCodeMessage(error.code);
+    if (codeMessage) {
+      return codeMessage;
+    }
   }
 
   if (error instanceof Error && error.message.trim()) {

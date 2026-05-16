@@ -7,17 +7,27 @@ import MarkdownRenderer from '../components/markdown/MarkdownRenderer';
 import { dataService } from '../services/dataService';
 import { calculateReadTime } from '../features/articles/article.utils';
 import { useArticleDetail } from '../features/articles/useArticleDetail';
-import { notifyUnavailable } from '../features/unavailable';
+import { getApiErrorMessage } from '../api/errors';
 
 export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const { post, comments, relatedPosts, loading, notFound } = useArticleDetail(id);
+  const {
+    post,
+    setPost,
+    comments,
+    relatedPosts,
+    loading,
+    notFound,
+    commentErrorMessage,
+    refetch,
+  } = useArticleDetail(id);
   const [newComment, setNewComment] = useState('');
-  const [guestName, setGuestName] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number, name: string } | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [commentActionError, setCommentActionError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,11 +46,56 @@ export default function PostDetail() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    notifyUnavailable('评论功能');
+    if (!post) return;
+    if (!user) {
+      alert('请先登录后再参与评论。');
+      navigate('/auth');
+      return;
+    }
+
+    const content = newComment.trim();
+    if (!content) return;
+    if (content.length > 150) {
+      setCommentActionError('评论内容不能超过 150 个字符。');
+      return;
+    }
+
+    setSubmittingComment(true);
+    setCommentActionError(null);
+    try {
+      if (replyTo) {
+        await dataService.replyComment(replyTo.id, { content });
+      } else {
+        await dataService.createComment(post.id, { content });
+      }
+      setNewComment('');
+      setReplyTo(null);
+      await refetch();
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      setCommentActionError(getApiErrorMessage(error, '评论发布失败，请稍后再试。'));
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
-  const handleDeleteComment = async (_commentId?: number) => {
-    notifyUnavailable('评论删除功能');
+  const handleDeleteComment = async (commentId?: number) => {
+    if (!commentId) return;
+    if (!user) {
+      alert('请先登录。');
+      navigate('/auth');
+      return;
+    }
+    if (!window.confirm('确定要删除这条评论吗？')) return;
+
+    setCommentActionError(null);
+    try {
+      await dataService.deleteComment(commentId);
+      await refetch();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      setCommentActionError(getApiErrorMessage(error, '评论删除失败，请稍后再试。'));
+    }
   };
 
   const handleDeletePost = async () => {
@@ -61,7 +116,27 @@ export default function PostDetail() {
       navigate('/auth');
       return;
     }
-    notifyUnavailable('点赞功能');
+
+    if (!post) return;
+    const previous = post;
+    const nextLiked = !post.liked;
+    setPost({
+      ...post,
+      liked: nextLiked,
+      likeCount: Math.max(0, post.likeCount + (nextLiked ? 1 : -1)),
+    });
+
+    try {
+      if (nextLiked) {
+        await dataService.likeArticle(post.id);
+      } else {
+        await dataService.unlikeArticle(post.id);
+      }
+    } catch (error) {
+      console.error('Error updating like:', error);
+      setPost(previous);
+      alert(getApiErrorMessage(error, '点赞操作失败，请稍后再试。'));
+    }
   };
 
   if (loading) return <div className="text-center py-20 font-serif text-2xl italic text-[#3B82F6]">正在为您开启精彩故事...</div>;
@@ -78,9 +153,9 @@ export default function PostDetail() {
   if (!post) return null;
 
   const isAuthor = user?.id === post.authorId;
-  const canManagePost = isAuthor || isAdmin;
-  const isLiked = false; // Not in doc yet
+  const isLiked = post.liked;
   const likeCount = post.likeCount || 0;
+  const rootComments = comments.filter(c => !c.parentId);
 
   const categoryStyles: Record<string, { bg: string, text: string, accent: string }> = {
     '技术': { bg: 'from-blue-500/10', text: 'text-blue-600', accent: '#3B82F6' },
@@ -233,8 +308,14 @@ export default function PostDetail() {
       <section className="mt-12 space-y-8">
         <div className="flex items-center justify-between h-8">
           <h3 className="text-2xl font-extrabold tracking-tight">精彩评论</h3>
-          <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-widest">{comments.length} 条评论</span>
+          <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-widest">{post.commentCount || comments.length} 条评论</span>
         </div>
+
+        {(commentErrorMessage || commentActionError) && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            {commentActionError || commentErrorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleAddComment} className="space-y-4">
           <div className="relative group bento-card !p-0 overflow-hidden ring-1 ring-gray-100 focus-within:ring-[#3B82F6] transition-all shadow-sm">
@@ -249,27 +330,26 @@ export default function PostDetail() {
               </div>
             )}
             <textarea
-              placeholder="加入讨论，发表您的见解..."
+              placeholder={user ? '加入讨论，发表您的见解...' : '登录后即可加入讨论...'}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
+              maxLength={150}
               className="w-full bg-white p-6 pr-20 min-h-[120px] outline-none text-sm resize-none"
             />
             {!user && (
-              <div className="px-6 pb-4 pt-1 border-t border-gray-50 flex items-center gap-3 bg-gray-50/30">
-                <input 
-                  type="text" 
-                  placeholder="您的昵称 (必填)" 
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  className="max-w-[150px] bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#3B82F6]"
-                  required={!user}
-                />
-                <span className="text-[10px] text-gray-400 font-medium italic">您当前以访客身份评论</span>
+              <div className="px-6 pb-4 pt-1 border-t border-gray-50 flex items-center justify-between gap-3 bg-gray-50/30">
+                <span className="text-[10px] text-gray-400 font-medium italic">评论和回复需要登录后操作</span>
+                <button type="button" onClick={() => navigate('/auth')} className="text-[10px] font-bold text-[#3B82F6] hover:underline">
+                  去登录
+                </button>
               </div>
             )}
+            <span className="absolute left-6 bottom-5 text-[10px] font-bold text-gray-300">
+              {newComment.trim().length}/150
+            </span>
             <button
               type="submit"
-              disabled={!newComment.trim() || (!user && !guestName.trim())}
+              disabled={!newComment.trim() || submittingComment}
               className="absolute right-4 bottom-4 p-4 bg-[#3B82F6] text-white rounded-2xl hover:bg-[#2563EB] transition-all disabled:opacity-30 flex items-center justify-center shadow-lg transform hover:-translate-y-0.5 active:scale-95"
             >
               <Send size={18} />
@@ -279,14 +359,18 @@ export default function PostDetail() {
 
         <div className="space-y-6">
           {/* Group comments into threads */}
-          {comments.filter(c => !c.parentId).map((parentComment) => (
+          {rootComments.map((parentComment) => (
             <div key={parentComment.id} className="space-y-4">
               {/* Parent Comment */}
               <div className="bento-card !p-6 relative group border-l-4 border-l-[#3B82F6]/10">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-200">
-                      {(parentComment.authorName || 'V')[0]}
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-200 overflow-hidden">
+                      {parentComment.authorAvatarUrl ? (
+                        <img src={parentComment.authorAvatarUrl} alt={parentComment.authorName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        (parentComment.authorName || '用')[0]
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-bold tracking-tight text-gray-900">{parentComment.authorName}</p>
@@ -307,7 +391,7 @@ export default function PostDetail() {
                     >
                       <MessageSquare size={16} />
                     </button>
-                    {(parentComment.authorId === user?.id || canManagePost) && (
+                    {parentComment.deletable && (
                       <button 
                         onClick={() => handleDeleteComment(parentComment.id)}
                         className="p-1 text-gray-400 hover:text-red-500 transition-colors"
@@ -326,24 +410,44 @@ export default function PostDetail() {
                     <div key={reply.id} className="relative py-3">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-gray-100">
-                            {(reply.authorName || 'V')[0]}
+                          <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-gray-100 overflow-hidden">
+                            {reply.authorAvatarUrl ? (
+                              <img src={reply.authorAvatarUrl} alt={reply.authorName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              (reply.authorName || '用')[0]
+                            )}
                           </div>
                           <div>
                             <span className="text-[11px] font-bold text-gray-900">{reply.authorName}</span>
+                            {reply.replyToName && (
+                              <span className="text-[10px] font-bold text-[#3B82F6] ml-1">回复 {reply.replyToName}</span>
+                            )}
                             <span className="text-[10px] text-gray-400 ml-2">
                                {reply.createdAt ? format(new Date(reply.createdAt), 'MM-dd HH:mm') : '刚刚'}
                             </span>
                           </div>
                         </div>
-                        {(reply.authorId === user?.id || canManagePost) && (
-                          <button 
-                            onClick={() => handleDeleteComment(reply.id)}
-                            className="p-1 text-gray-300 hover:text-red-500 transition-opacity"
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setReplyTo({ id: reply.id, name: reply.authorName });
+                              window.scrollTo({ top: document.querySelector('form')?.offsetTop ? document.querySelector('form')!.offsetTop - 100 : 0, behavior: 'smooth' });
+                            }}
+                            className="p-1 text-gray-300 hover:text-[#3B82F6] transition-opacity"
+                            title="回复"
                           >
-                            <Trash2 size={12} />
+                            <MessageSquare size={12} />
                           </button>
-                        )}
+                          {reply.deletable && (
+                            <button 
+                              onClick={() => handleDeleteComment(reply.id)}
+                              className="p-1 text-gray-300 hover:text-red-500 transition-opacity"
+                              title="删除评论"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-gray-500 text-xs leading-relaxed">{reply.content}</p>
                     </div>

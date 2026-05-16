@@ -1,8 +1,11 @@
 import {
   Article,
   AuthResponse,
+  Comment,
+  PageResponse,
   SystemSettings,
 } from '../types';
+import { ArticleSortCode, ArticleVisibilityCode, GenderCode, UserRoleCode } from './enums';
 
 export interface LoginRequest {
   username: string;
@@ -28,7 +31,7 @@ export interface ArticleListParams {
   tagId?: number;
   status?: Article['status'];
   keyword?: string;
-  sort?: 0 | 1;
+  sort?: ArticleSortCode;
 }
 
 export interface ArticleMutationRequest {
@@ -41,7 +44,7 @@ export interface ArticleMutationRequest {
 }
 
 export interface CreateArticleRequest extends ArticleMutationRequest {
-  visibility: number;
+  visibility: ArticleVisibilityCode;
 }
 
 export type CreateDraftRequest = ArticleMutationRequest;
@@ -55,7 +58,7 @@ export type UpdateArticleRequest = Partial<
 export interface UpdateProfileRequest {
   nickname?: string;
   bio?: string;
-  gender?: 0 | 1 | 2;
+  gender?: GenderCode;
 }
 
 export type UpdateSettingsRequest = SystemSettings;
@@ -69,7 +72,7 @@ export interface UserDto {
   avatarUrl?: string | null;
   backgroundImageUrl?: string | null;
   bio?: string | null;
-  role?: 0 | 1;
+  role?: UserRoleCode;
   status?: number;
   createdAt?: string | null;
 }
@@ -121,3 +124,49 @@ export interface CategoryDto {
   description?: string | null;
   enabled: boolean;
 }
+
+export interface CommentUserDto {
+  id: number;
+  nickname?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface ArticleCommentDto {
+  id: number;
+  commentUser: CommentUserDto;
+  content: string;
+  createdAt: string;
+  replyCount?: number;
+  deletable?: boolean;
+}
+
+export interface CommentReplyDto {
+  id: number;
+  articleId: number;
+  rootId: number;
+  parentId: number;
+  user: CommentUserDto;
+  replyToUser?: CommentUserDto | null;
+  content: string;
+  createdAt: string;
+  deletable?: boolean;
+}
+
+export interface CommentPageParams {
+  cursor?: string;
+  size?: number;
+}
+
+export interface CommentRequest {
+  content: string;
+}
+
+export interface ArticleCommentPage extends Omit<PageResponse<ArticleCommentDto>, 'items'> {
+  items: ArticleCommentDto[];
+}
+
+export interface CommentReplyPage extends Omit<PageResponse<CommentReplyDto>, 'items'> {
+  items: CommentReplyDto[];
+}
+
+export type CommentMapper = (dto: ArticleCommentDto | CommentReplyDto, articleId?: number) => Comment;

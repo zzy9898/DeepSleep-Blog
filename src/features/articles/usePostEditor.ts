@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiFieldErrors, getApiErrorMessage, getApiFieldErrors } from '../../api/errors';
+import { ArticleStatusCode, ArticleVisibilityCode } from '../../api/enums';
 import { dataService } from '../../services/dataService';
 import { UserProfile } from '../../types';
 import { parseTagInput } from './article.utils';
@@ -26,7 +27,7 @@ export function usePostEditor({ id, user, authLoading, isAdmin }: UsePostEditorO
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [tags, setTags] = useState('');
-  const [status, setStatus] = useState<number>(1);
+  const [status, setStatus] = useState<ArticleStatusCode>(ArticleStatusCode.Published);
   const [isPreview, setIsPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -73,7 +74,7 @@ export function usePostEditor({ id, user, authLoading, isAdmin }: UsePostEditorO
         setContent(data.content);
         setCategoryId(data.categoryId);
         setTags(data.tags.map((tag) => tag.name).join(', '));
-        setStatus(data.status);
+        setStatus(data.status as ArticleStatusCode);
       } catch (error) {
         console.error('Error fetching post:', error);
         navigate('/');
@@ -117,9 +118,9 @@ export function usePostEditor({ id, user, authLoading, isAdmin }: UsePostEditorO
         return;
       }
 
-      const post = status === 0
+      const post = status === ArticleStatusCode.Draft
         ? await dataService.createDraft(articleData)
-        : await dataService.createArticle({ ...articleData, visibility: 0 });
+        : await dataService.createArticle({ ...articleData, visibility: ArticleVisibilityCode.Public });
       navigate(`/post/${post.id}`);
     } catch (error) {
       console.error('Error saving post:', error);
