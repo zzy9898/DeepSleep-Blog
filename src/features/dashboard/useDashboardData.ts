@@ -2,14 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getApiErrorMessage } from '../../api/errors';
 import { dataService } from '../../services/dataService';
-import { Article, Comment, SystemSettings, UserProfile } from '../../types';
+import { Article, UserProfile } from '../../types';
 
-export interface CategoryDatum {
-  name: string;
-  value: number;
-}
-
-export function useDashboardData(user: UserProfile | null, isAdmin: boolean, authLoading: boolean) {
+export function useDashboardData(user: UserProfile | null, authLoading: boolean) {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Article[]>([]);
   const [likedPosts, setLikedPosts] = useState<Article[]>([]);
@@ -17,17 +12,6 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [allComments, setAllComments] = useState<Comment[]>([]);
-  const [categoryData, setCategoryData] = useState<CategoryDatum[]>([]);
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    siteName: 'DeepSleep Blog',
-    siteSubtitle: '探索数字艺术与极简生活',
-    allowRegistration: true,
-    commentReviewRequired: false,
-    postsPerPage: 10,
-    sensitiveWords: [],
-  });
 
   const fetchDashboardData = useCallback(
     async (isInitial = false) => {
@@ -40,30 +24,13 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
 
       try {
         setErrorMessage(null);
-        let fetchedPosts: Article[] = [];
-        if (isAdmin) {
-          await dataService.pingAdmin();
-          fetchedPosts = await dataService.getAllArticles();
+        const [myArticles, myLikedArticles] = await Promise.all([
+          dataService.getAllMyArticles(),
+          dataService.getAllLikedArticles(),
+        ]);
 
-          setAllUsers([]);
-          setAllComments([]);
-
-          const counts: Record<string, number> = {};
-          fetchedPosts.forEach((post) => {
-            const category = post.categoryName || '其它';
-            counts[category] = (counts[category] || 0) + 1;
-          });
-          setCategoryData(Object.entries(counts).map(([name, value]) => ({ name, value })));
-        } else {
-          const [myArticles, myLikedArticles] = await Promise.all([
-            dataService.getAllMyArticles(),
-            dataService.getAllLikedArticles(),
-          ]);
-          fetchedPosts = myArticles;
-          setLikedPosts(myLikedArticles);
-        }
-
-        setPosts(fetchedPosts);
+        setPosts(myArticles);
+        setLikedPosts(myLikedArticles);
         setHasMore(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -73,7 +40,7 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
         setLoadingMore(false);
       }
     },
-    [isAdmin, user],
+    [user],
   );
 
   useEffect(() => {
@@ -93,11 +60,5 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
     loading,
     loadingMore,
     hasMore,
-    allUsers,
-    allComments,
-    setAllComments,
-    categoryData,
-    systemSettings,
-    setSystemSettings,
   };
 }

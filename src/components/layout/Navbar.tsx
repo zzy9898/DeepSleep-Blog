@@ -5,6 +5,7 @@ import {
   LogOut,
   PenSquare,
   Send,
+  ShieldCheck,
   Sparkles,
   User as UserIcon,
   type LucideIcon,
@@ -72,11 +73,10 @@ export default function Navbar() {
         {user && (
           <>
             <NavItem to="/dashboard" icon={LayoutDashboard} label="个人工作台" active={location.pathname === '/dashboard'} />
-            {!isAdmin && (
-              <>
-                <NavItem to="/create" icon={PenSquare} label="发布文章" active={location.pathname === '/create'} />
-                <NavItem to={`/profile/${user.id}`} icon={UserIcon} label="我的空间" active={location.pathname.startsWith('/profile')} />
-              </>
+            <NavItem to="/create" icon={PenSquare} label="发布文章" active={location.pathname === '/create'} />
+            <NavItem to={`/profile/${user.id}`} icon={UserIcon} label="我的空间" active={location.pathname.startsWith('/profile')} />
+            {isAdmin && (
+              <NavItem to="/admin" icon={ShieldCheck} label="全站管理" active={location.pathname === '/admin'} />
             )}
           </>
         )}

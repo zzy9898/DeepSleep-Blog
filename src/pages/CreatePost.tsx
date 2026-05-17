@@ -8,7 +8,7 @@ import { usePostEditor } from '../features/articles/usePostEditor';
 
 export default function CreatePost() {
   const { id } = useParams();
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const {
     title,
     setTitle,
@@ -27,7 +27,7 @@ export default function CreatePost() {
     fieldErrors,
     fieldErrorVersion,
     handleSave,
-  } = usePostEditor({ id, user, authLoading, isAdmin });
+  } = usePostEditor({ id, user, authLoading });
   const { categories, loading: categoriesLoading } = useCategories();
 
   if (authLoading) return <div className="p-20 text-center text-[#3B82F6] font-bold">正在认证身份...</div>;

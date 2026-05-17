@@ -24,12 +24,18 @@
 - 评论接口集中在 `src/api/comments.ts`：一级评论 `POST /articles/{articleId}/comments`，回复 `POST /comments/{commentId}`，查询评论和回复使用游标分页且默认 `size=10`，删除评论走 `DELETE /comments/{commentId}`。
 - 文章点赞和取消点赞接口集中在 `src/api/articles.ts`，分别调用 `POST /articles/{articleId}/like` 与 `DELETE /articles/{articleId}/like`。
 - 当前用户已点赞文章列表通过 `GET /users/me/liked-articles` 获取，前端映射为 `Article[]` 后用于工作台“我的喜欢”。
+- 管理员接口集中在 `src/api/admin.ts`，例如管理概览、管理员用户分页、封禁和解封用户；不要混入普通用户资料接口。
 - 后端数字枚举集中维护在 `src/api/enums.ts`，业务码集中维护在 `src/api/businessCodes.ts`；新增或微调业务码时同步更新前端兜底错误文案。
 
 ## 前端结构约定
 
 - 路由守卫放在 `src/routes`，布局组件放在 `src/components/layout`，页面组件尽量只处理页面业务展示。
 - 文章相关的请求状态、编辑状态和常量优先放在 `src/features/articles`。
+- 管理员是普通用户能力的超集：管理员也应能发布文章、编辑自己的文章、维护个人资料和访问个人空间。
+- 管理员不能任意编辑他人文章；管理员治理他人文章应通过封禁、删除等管理接口实现，未开放接口前记录到 `docs/TODO.md`。
+- 个人工作台和全站管理系统必须分离：`/dashboard` 只放当前用户自己的内容、资料和喜欢；`/admin` 只放管理员可访问的全站概览、用户管理、内容治理和系统配置。
+- 管理员专属页面使用 `src/routes/AdminRoute.tsx` 之类的管理员路由守卫；不要用“禁止管理员访问普通功能”的 `forbidAdmin` 模式。
+- 管理员端状态和组件优先放在 `src/features/admin` 与 `src/pages/AdminConsole.tsx`，不要塞回个人工作台。
 - 暂未开放的能力使用 `src/features/unavailable.ts` 中的提示方式，不要做“只提示成功但没有真实 API 调用”的交互。
 - 当前用户资料更新后应调用 `useAuth` 暴露的 `refreshProfile()` 刷新全局用户状态，避免头像、背景图等资料在页面间不一致。
 - 评论查询返回的 `deletable` 字段应作为删除按钮展示依据；不要在页面中仅靠当前用户 ID 或管理员身份自行推断评论删除权限。

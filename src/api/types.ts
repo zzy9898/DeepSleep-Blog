@@ -1,7 +1,10 @@
 import {
+  AdminOverview,
+  AdminUser,
   Article,
   AuthResponse,
   Comment,
+  PageResult,
   PageResponse,
   SystemSettings,
 } from '../types';
@@ -134,6 +137,37 @@ export interface LikedArticleDto {
   publishedAt?: string | null;
   likedAt: string;
 }
+
+export type AdminOverviewDto = AdminOverview;
+
+export interface AdminUserListItemDto {
+  id: number;
+  username: string;
+  nickname?: string | null;
+  avatarUrl?: string | null;
+  role: UserRoleCode;
+  status: number;
+  articleCount?: number;
+  commentCount?: number;
+  createdAt: string;
+  lastLoginAt?: string | null;
+}
+
+export type AdminUserPageDto = PageResult<AdminUserListItemDto>;
+
+export interface AdminUserListParams {
+  keyword?: string;
+  role?: UserRoleCode;
+  status?: number;
+  page?: number;
+  size?: number;
+}
+
+export interface BanUserRequest {
+  reason: string;
+}
+
+export type AdminUserPage = PageResult<AdminUser>;
 
 export interface CategoryDto {
   categoryId: number;

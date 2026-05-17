@@ -1,5 +1,13 @@
-import { Article, Category, UserProfile } from '../types';
-import { ArticleCommentDto, ArticleDto, CategoryDto, CommentReplyDto, LikedArticleDto, UserDto } from './types';
+import { AdminUser, Article, Category, UserProfile } from '../types';
+import {
+  AdminUserListItemDto,
+  ArticleCommentDto,
+  ArticleDto,
+  CategoryDto,
+  CommentReplyDto,
+  LikedArticleDto,
+  UserDto,
+} from './types';
 import { ArticleStatusCode, UserRoleCode } from './enums';
 
 export function mapUser(dto: UserDto): UserProfile {
@@ -13,6 +21,21 @@ export function mapUser(dto: UserDto): UserProfile {
     bio: dto.bio || '',
     avatarUrl: dto.avatarUrl || undefined,
     bannerUrl: dto.backgroundImageUrl || undefined,
+  };
+}
+
+export function mapAdminUser(dto: AdminUserListItemDto): AdminUser {
+  return {
+    id: dto.id,
+    username: dto.username,
+    displayName: dto.nickname || dto.username,
+    avatarUrl: dto.avatarUrl || undefined,
+    role: dto.role === UserRoleCode.Admin ? 'admin' : 'user',
+    status: dto.status,
+    articleCount: dto.articleCount ?? 0,
+    commentCount: dto.commentCount ?? 0,
+    createdAt: dto.createdAt,
+    lastLoginAt: dto.lastLoginAt ?? null,
   };
 }
 

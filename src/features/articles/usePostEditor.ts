@@ -10,7 +10,6 @@ interface UsePostEditorOptions {
   id?: string;
   user: UserProfile | null;
   authLoading: boolean;
-  isAdmin: boolean;
 }
 
 function removeFieldError(fieldErrors: ApiFieldErrors, fields: string[]): ApiFieldErrors {
@@ -21,7 +20,7 @@ function removeFieldError(fieldErrors: ApiFieldErrors, fields: string[]): ApiFie
   return nextFieldErrors;
 }
 
-export function usePostEditor({ id, user, authLoading, isAdmin }: UsePostEditorOptions) {
+export function usePostEditor({ id, user, authLoading }: UsePostEditorOptions) {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -66,7 +65,7 @@ export function usePostEditor({ id, user, authLoading, isAdmin }: UsePostEditorO
 
       try {
         const data = await dataService.getArticleDetail(Number(id));
-        if (data.authorId !== user.id && !isAdmin) {
+        if (data.authorId !== user.id) {
           navigate('/');
           return;
         }
@@ -84,12 +83,12 @@ export function usePostEditor({ id, user, authLoading, isAdmin }: UsePostEditorO
     if (authLoading) {
       return;
     }
-    if (!user || isAdmin) {
+    if (!user) {
       navigate(user ? '/' : '/auth');
       return;
     }
     fetchPost();
-  }, [authLoading, id, isAdmin, navigate, user]);
+  }, [authLoading, id, navigate, user]);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();

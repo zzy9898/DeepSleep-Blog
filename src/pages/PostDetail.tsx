@@ -250,13 +250,15 @@ export default function PostDetail() {
             
             {(isAuthor || isAdmin) && (
               <div className="flex gap-2">
-                <Link 
-                  to={`/edit/${id}`}
-                  className="p-2 text-gray-300 hover:text-[#3B82F6] transition-colors"
-                  title="编辑文章"
-                >
-                  <Edit size={20} />
-                </Link>
+                {isAuthor && (
+                  <Link
+                    to={`/edit/${id}`}
+                    className="p-2 text-gray-300 hover:text-[#3B82F6] transition-colors"
+                    title="编辑文章"
+                  >
+                    <Edit size={20} />
+                  </Link>
+                )}
                 <button 
                   onClick={handleDeletePost}
                   className="p-2 text-gray-300 hover:text-red-500 transition-colors"

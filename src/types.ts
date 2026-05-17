@@ -56,6 +56,14 @@ export interface PageResponse<T> {
   hasMore: boolean;
 }
 
+export interface PageResult<T> {
+  records: T[];
+  total: number;
+  page: number;
+  size: number;
+  hasNext: boolean;
+}
+
 export interface Comment {
   id: number;
   articleId: number;
@@ -83,6 +91,27 @@ export interface UserProfile {
   avatarUrl?: string;
   bannerUrl?: string;
   themeConfig?: UserThemeConfig;
+}
+
+export interface AdminOverview {
+  userCount: number;
+  articleCount: number;
+  todayNewUsers: number;
+  todayNewArticles: number;
+  blockedArticleCount: number;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  role: 'user' | 'admin';
+  status: number;
+  articleCount: number;
+  commentCount: number;
+  createdAt: string;
+  lastLoginAt: string | null;
 }
 
 export interface SystemSettings {

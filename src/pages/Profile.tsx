@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { AlertCircle, Calendar, Heart, Eye, ArrowRight, Sparkles, ShieldCheck, Search, ChevronDown } from 'lucide-react';
+import { AlertCircle, Calendar, Heart, Eye, ArrowRight, Sparkles, Search, ChevronDown } from 'lucide-react';
 import { getApiErrorMessage } from '../api/errors';
 import { useCategories } from '../features/articles/useCategories';
 import { dataService } from '../services/dataService';
@@ -113,20 +113,6 @@ export default function Profile() {
   if (loading) return <div className="text-center py-20 font-serif text-2xl italic text-[#3B82F6]">正在为您开启 TA 的故事空间...</div>;
   if (!profile) return <div className="text-center py-20">用户不存在</div>;
 
-  // Administrators do not have their own "blog interface"
-  if (profile.role === 'admin') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-700">
-        <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center mb-6">
-          <ShieldCheck size={48} className="text-purple-600" />
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">系统管理员身份</h1>
-        <p className="text-gray-400 max-w-sm mb-8">该账户仅用于平台维护与内容治理，不设个人博文空间。</p>
-        <Link to="/" className="text-sm font-bold text-[#3B82F6] hover:underline uppercase tracking-widest">返回发现文章</Link>
-      </div>
-    );
-  }
-
   const theme = {
     accentColor: '#3B82F6',
     backgroundType: 'gradient',
@@ -227,8 +213,7 @@ export default function Profile() {
                       className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-sm"
                       style={{ backgroundColor: theme.accentColor }}
                     >
-                      {/* Since we already checked for 'admin' earlier, this role is guaranteed to be 'user' here */}
-                      创作者
+                      {profile.role === 'admin' ? '管理员 / 创作者' : '创作者'}
                     </span>
                   </div>
                 </div>

@@ -1,12 +1,14 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import { AuthProvider } from './hooks/useAuth';
+import AdminConsole from './pages/AdminConsole';
 import AuthPage from './pages/AuthPage';
 import CreatePost from './pages/CreatePost';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import PostDetail from './pages/PostDetail';
 import Profile from './pages/Profile';
+import AdminRoute from './routes/AdminRoute';
 import GuestRoute from './routes/GuestRoute';
 import ProtectedRoute from './routes/ProtectedRoute';
 
@@ -30,7 +32,7 @@ export default function App() {
             <Route
               path="/create"
               element={(
-                <ProtectedRoute forbidAdmin>
+                <ProtectedRoute>
                   <CreatePost />
                 </ProtectedRoute>
               )}
@@ -38,7 +40,7 @@ export default function App() {
             <Route
               path="/edit/:id"
               element={(
-                <ProtectedRoute forbidAdmin>
+                <ProtectedRoute>
                   <CreatePost />
                 </ProtectedRoute>
               )}
@@ -49,6 +51,14 @@ export default function App() {
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/admin"
+              element={(
+                <AdminRoute>
+                  <AdminConsole />
+                </AdminRoute>
               )}
             />
           </Route>

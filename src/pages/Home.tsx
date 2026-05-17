@@ -128,36 +128,33 @@ export default function Home() {
         <div className="flex flex-wrap items-center justify-center gap-3 relative z-10 pt-2">
           {user ? (
             <>
-              {isAdmin ? (
+              <Link
+                to="/create"
+                className="px-6 py-3 bg-[#3B82F6] text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-100 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 group"
+              >
+                开始创作
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                to="/dashboard"
+                className="px-6 py-3 bg-white border border-gray-100 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all"
+              >
+                前往工作台
+              </Link>
+              <Link
+                to={`/profile/${user.id}`}
+                className="px-6 py-3 bg-white border border-gray-100 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all flex items-center gap-2"
+              >
+                我的界面
+              </Link>
+              {isAdmin && (
                 <Link
-                  to="/dashboard"
-                  className="px-8 py-3 bg-[#3B82F6] text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-100 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 group"
+                  to="/admin"
+                  className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all flex items-center gap-2 group"
                 >
                   进入管理系统
                   <LayoutDashboard size={14} className="group-hover:rotate-12 transition-transform" />
                 </Link>
-              ) : (
-                <>
-                  <Link
-                    to="/create"
-                    className="px-6 py-3 bg-[#3B82F6] text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-100 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 group"
-                  >
-                    开始创作
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                  <Link
-                    to="/dashboard"
-                    className="px-6 py-3 bg-white border border-gray-100 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all"
-                  >
-                    前往工作台
-                  </Link>
-                  <Link
-                    to={`/profile/${user.id}`}
-                    className="px-6 py-3 bg-white border border-gray-100 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all flex items-center gap-2"
-                  >
-                    我的界面
-                  </Link>
-                </>
               )}
             </>
           ) : (
