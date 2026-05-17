@@ -3,6 +3,20 @@ import { getApiErrorMessage } from '../../api/errors';
 import { dataService } from '../../services/dataService';
 import { Article, Comment } from '../../types';
 
+function replaceRepliesForRoot(comments: Comment[], rootCommentId: number, replies: Comment[]): Comment[] {
+  return comments.flatMap((comment) => {
+    if (!comment.parentId && comment.id === rootCommentId) {
+      return [comment, ...replies];
+    }
+
+    if (comment.rootId === rootCommentId || comment.parentId === rootCommentId) {
+      return [];
+    }
+
+    return [comment];
+  });
+}
+
 export function useArticleDetail(id?: string) {
   const [post, setPost] = useState<Article | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -10,16 +24,42 @@ export function useArticleDetail(id?: string) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [commentErrorMessage, setCommentErrorMessage] = useState<string | null>(null);
+  const [loadingReplyRootIds, setLoadingReplyRootIds] = useState<Set<number>>(new Set());
+  const [expandedReplyRootIds, setExpandedReplyRootIds] = useState<Set<number>>(new Set());
 
   const fetchComments = useCallback(async (articleId: number) => {
     try {
       setCommentErrorMessage(null);
-      const fetchedComments = await dataService.getAllArticleComments(articleId);
+      setLoadingReplyRootIds(new Set());
+      setExpandedReplyRootIds(new Set());
+      const fetchedComments = await dataService.getInitialArticleComments(articleId);
       setComments(fetchedComments);
     } catch (error) {
       console.error('Error fetching comments:', error);
       setComments([]);
+      setLoadingReplyRootIds(new Set());
+      setExpandedReplyRootIds(new Set());
       setCommentErrorMessage(getApiErrorMessage(error, '暂时无法加载评论，请稍后再试。'));
+    }
+  }, []);
+
+  const loadCommentReplies = useCallback(async (rootCommentId: number) => {
+    setLoadingReplyRootIds((current) => new Set(current).add(rootCommentId));
+    setCommentErrorMessage(null);
+
+    try {
+      const replies = await dataService.getAllCommentReplies(rootCommentId);
+      setComments((current) => replaceRepliesForRoot(current, rootCommentId, replies));
+      setExpandedReplyRootIds((current) => new Set(current).add(rootCommentId));
+    } catch (error) {
+      console.error('Error fetching comment replies:', error);
+      setCommentErrorMessage(getApiErrorMessage(error, '暂时无法展开回复，请稍后再试。'));
+    } finally {
+      setLoadingReplyRootIds((current) => {
+        const next = new Set(current);
+        next.delete(rootCommentId);
+        return next;
+      });
     }
   }, []);
 
@@ -48,6 +88,8 @@ export function useArticleDetail(id?: string) {
       setPost(null);
       setComments([]);
       setCommentErrorMessage(null);
+      setLoadingReplyRootIds(new Set());
+      setExpandedReplyRootIds(new Set());
       setRelatedPosts([]);
       setNotFound(true);
     } finally {
@@ -68,6 +110,9 @@ export function useArticleDetail(id?: string) {
     loading,
     notFound,
     commentErrorMessage,
+    loadingReplyRootIds,
+    expandedReplyRootIds,
+    loadCommentReplies,
     refetchComments: () => (post ? fetchComments(post.id) : Promise.resolve()),
     refetch: fetchArticle,
   };

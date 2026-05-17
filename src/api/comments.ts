@@ -9,6 +9,7 @@ import {
 } from './types';
 
 const COMMENT_PAGE_SIZE = 10;
+const INLINE_REPLY_LIMIT = 3;
 
 function mergeReplies(comments: Comment[], repliesByRootId: Map<number, Comment[]>): Comment[] {
   return comments.flatMap((comment) => [comment, ...(repliesByRootId.get(comment.id) || [])]);
@@ -72,12 +73,30 @@ export async function getCommentReplies(commentId: number, params: CommentPagePa
   };
 }
 
+export async function getAllCommentReplies(commentId: number): Promise<Comment[]> {
+  return collectCommentPages((params) => getCommentReplies(commentId, params));
+}
+
+export async function getInitialArticleComments(articleId: number): Promise<Comment[]> {
+  const parentComments = await collectCommentPages((params) => getArticleComments(articleId, params));
+  const replyEntries = await Promise.all(
+    parentComments
+      .filter((comment) => {
+        const replyCount = comment.replyCount ?? 0;
+        return replyCount > 0 && replyCount <= INLINE_REPLY_LIMIT;
+      })
+      .map(async (comment) => [comment.id, await getAllCommentReplies(comment.id)] as const),
+  );
+
+  return mergeReplies(parentComments, new Map(replyEntries));
+}
+
 export async function getAllArticleComments(articleId: number): Promise<Comment[]> {
   const parentComments = await collectCommentPages((params) => getArticleComments(articleId, params));
   const replyEntries = await Promise.all(
     parentComments
       .filter((comment) => (comment.replyCount ?? 0) > 0)
-      .map(async (comment) => [comment.id, await collectCommentPages((params) => getCommentReplies(comment.id, params))] as const),
+      .map(async (comment) => [comment.id, await getAllCommentReplies(comment.id)] as const),
   );
 
   return mergeReplies(parentComments, new Map(replyEntries));

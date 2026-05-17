@@ -21,6 +21,9 @@ export default function PostDetail() {
     loading,
     notFound,
     commentErrorMessage,
+    loadingReplyRootIds,
+    expandedReplyRootIds,
+    loadCommentReplies,
     refetch,
   } = useArticleDetail(id);
   const [newComment, setNewComment] = useState('');
@@ -156,6 +159,9 @@ export default function PostDetail() {
   const isLiked = post.liked;
   const likeCount = post.likeCount || 0;
   const rootComments = comments.filter(c => !c.parentId);
+  const getRepliesForRoot = (rootCommentId: number) => comments.filter((comment) => (
+    comment.rootId === rootCommentId || comment.parentId === rootCommentId
+  ));
 
   const categoryStyles: Record<string, { bg: string, text: string, accent: string }> = {
     '技术': { bg: 'from-blue-500/10', text: 'text-blue-600', accent: '#3B82F6' },
@@ -359,103 +365,125 @@ export default function PostDetail() {
 
         <div className="space-y-6">
           {/* Group comments into threads */}
-          {rootComments.map((parentComment) => (
-            <div key={parentComment.id} className="space-y-4">
-              {/* Parent Comment */}
-              <div className="bento-card !p-6 relative group border-l-4 border-l-[#3B82F6]/10">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-200 overflow-hidden">
-                      {parentComment.authorAvatarUrl ? (
-                        <img src={parentComment.authorAvatarUrl} alt={parentComment.authorName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        (parentComment.authorName || '用')[0]
+          {rootComments.map((parentComment) => {
+            const replies = getRepliesForRoot(parentComment.id);
+            const replyCount = parentComment.replyCount ?? 0;
+            const isExpanded = expandedReplyRootIds.has(parentComment.id);
+            const isLoadingReplies = loadingReplyRootIds.has(parentComment.id);
+            const shouldShowExpandReplies = replyCount > 3 && !isExpanded && replies.length < replyCount;
+            const hasReplyPanel = replies.length > 0 || shouldShowExpandReplies;
+
+            return (
+              <div key={parentComment.id} className="space-y-4">
+                {/* Parent Comment */}
+                <div className="bento-card !p-6 relative group border-l-4 border-l-[#3B82F6]/10">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-200 overflow-hidden">
+                        {parentComment.authorAvatarUrl ? (
+                          <img src={parentComment.authorAvatarUrl} alt={parentComment.authorName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          (parentComment.authorName || '用')[0]
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-gray-900">{parentComment.authorName}</p>
+                        <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">
+                          {parentComment.createdAt ? format(new Date(parentComment.createdAt), 'MM月dd日 HH:mm') : '刚刚'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => {
+                          setReplyTo({ id: parentComment.id, name: parentComment.authorName });
+                          window.scrollTo({ top: document.querySelector('form')?.offsetTop ? document.querySelector('form')!.offsetTop - 100 : 0, behavior: 'smooth' });
+                        }}
+                        className="p-1 text-gray-400 hover:text-[#3B82F6] transition-colors"
+                        title="回复"
+                      >
+                        <MessageSquare size={16} />
+                      </button>
+                      {parentComment.deletable && (
+                        <button 
+                          onClick={() => handleDeleteComment(parentComment.id)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="删除评论"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       )}
                     </div>
-                    <div>
-                      <p className="text-sm font-bold tracking-tight text-gray-900">{parentComment.authorName}</p>
-                      <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">
-                        {parentComment.createdAt ? format(new Date(parentComment.createdAt), 'MM月dd日 HH:mm') : '刚刚'}
-                      </p>
-                    </div>
                   </div>
-                  
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => {
-                        setReplyTo({ id: parentComment.id, name: parentComment.authorName });
-                        window.scrollTo({ top: document.querySelector('form')?.offsetTop ? document.querySelector('form')!.offsetTop - 100 : 0, behavior: 'smooth' });
-                      }}
-                      className="p-1 text-gray-400 hover:text-[#3B82F6] transition-colors"
-                      title="回复"
-                    >
-                      <MessageSquare size={16} />
-                    </button>
-                    {parentComment.deletable && (
-                      <button 
-                        onClick={() => handleDeleteComment(parentComment.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                        title="删除评论"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed">{parentComment.content}</p>
+                  <p className="text-gray-600 text-sm leading-relaxed">{parentComment.content}</p>
 
-                {/* Replies Container */}
-                <div className="mt-4 space-y-3 pl-6 border-l border-gray-100">
-                  {comments.filter(c => c.parentId === parentComment.id).map(reply => (
-                    <div key={reply.id} className="relative py-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-gray-100 overflow-hidden">
-                            {reply.authorAvatarUrl ? (
-                              <img src={reply.authorAvatarUrl} alt={reply.authorName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                              (reply.authorName || '用')[0]
-                            )}
+                  {/* Replies Container */}
+                  {hasReplyPanel && (
+                    <div className="mt-4 space-y-3 pl-6 border-l border-gray-100">
+                      {replies.map(reply => (
+                        <div key={reply.id} className="relative py-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-gray-100 overflow-hidden">
+                                {reply.authorAvatarUrl ? (
+                                  <img src={reply.authorAvatarUrl} alt={reply.authorName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  (reply.authorName || '用')[0]
+                                )}
+                              </div>
+                              <div>
+                                <span className="text-[11px] font-bold text-gray-900">{reply.authorName}</span>
+                                {reply.replyToName && (
+                                  <span className="text-[10px] font-bold text-[#3B82F6] ml-1">回复 {reply.replyToName}</span>
+                                )}
+                                <span className="text-[10px] text-gray-400 ml-2">
+                                  {reply.createdAt ? format(new Date(reply.createdAt), 'MM-dd HH:mm') : '刚刚'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setReplyTo({ id: reply.id, name: reply.authorName });
+                                  window.scrollTo({ top: document.querySelector('form')?.offsetTop ? document.querySelector('form')!.offsetTop - 100 : 0, behavior: 'smooth' });
+                                }}
+                                className="p-1 text-gray-300 hover:text-[#3B82F6] transition-opacity"
+                                title="回复"
+                              >
+                                <MessageSquare size={12} />
+                              </button>
+                              {reply.deletable && (
+                                <button 
+                                  onClick={() => handleDeleteComment(reply.id)}
+                                  className="p-1 text-gray-300 hover:text-red-500 transition-opacity"
+                                  title="删除评论"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-[11px] font-bold text-gray-900">{reply.authorName}</span>
-                            {reply.replyToName && (
-                              <span className="text-[10px] font-bold text-[#3B82F6] ml-1">回复 {reply.replyToName}</span>
-                            )}
-                            <span className="text-[10px] text-gray-400 ml-2">
-                               {reply.createdAt ? format(new Date(reply.createdAt), 'MM-dd HH:mm') : '刚刚'}
-                            </span>
-                          </div>
+                          <p className="text-gray-500 text-xs leading-relaxed">{reply.content}</p>
                         </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => {
-                              setReplyTo({ id: reply.id, name: reply.authorName });
-                              window.scrollTo({ top: document.querySelector('form')?.offsetTop ? document.querySelector('form')!.offsetTop - 100 : 0, behavior: 'smooth' });
-                            }}
-                            className="p-1 text-gray-300 hover:text-[#3B82F6] transition-opacity"
-                            title="回复"
-                          >
-                            <MessageSquare size={12} />
-                          </button>
-                          {reply.deletable && (
-                            <button 
-                              onClick={() => handleDeleteComment(reply.id)}
-                              className="p-1 text-gray-300 hover:text-red-500 transition-opacity"
-                              title="删除评论"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-gray-500 text-xs leading-relaxed">{reply.content}</p>
+                      ))}
+                      {shouldShowExpandReplies && (
+                        <button
+                          type="button"
+                          onClick={() => loadCommentReplies(parentComment.id)}
+                          disabled={isLoadingReplies}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-[#3B82F6] transition-all hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          <MessageSquare size={12} />
+                          {isLoadingReplies ? '正在展开...' : `展开 ${replyCount} 条回复`}
+                        </button>
+                      )}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {comments.length === 0 && (
             <p className="text-center text-gray-400 text-sm py-8 font-medium">暂时没有评论，快来抢沙发吧...</p>
           )}
