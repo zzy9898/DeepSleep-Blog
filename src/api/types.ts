@@ -118,6 +118,23 @@ export interface ArticleDto {
   publishedAt?: string | null;
 }
 
+export interface LikedArticleDto {
+  articleId: number;
+  authorId: number;
+  authorNickname?: string | null;
+  authorAvatarUrl?: string | null;
+  title: string;
+  summary?: string | null;
+  coverUrl?: string | null;
+  categoryId: number;
+  categoryName?: string | null;
+  viewCount?: number;
+  likeCount?: number;
+  commentCount?: number;
+  publishedAt?: string | null;
+  likedAt: string;
+}
+
 export interface CategoryDto {
   categoryId: number;
   name: string;
@@ -152,10 +169,12 @@ export interface CommentReplyDto {
   deletable?: boolean;
 }
 
-export interface CommentPageParams {
+export interface CursorPageParams {
   cursor?: string;
   size?: number;
 }
+
+export type CommentPageParams = CursorPageParams;
 
 export interface CommentRequest {
   content: string;

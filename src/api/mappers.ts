@@ -1,6 +1,6 @@
 import { Article, Category, UserProfile } from '../types';
-import { ArticleCommentDto, ArticleDto, CategoryDto, CommentReplyDto, UserDto } from './types';
-import { UserRoleCode } from './enums';
+import { ArticleCommentDto, ArticleDto, CategoryDto, CommentReplyDto, LikedArticleDto, UserDto } from './types';
+import { ArticleStatusCode, UserRoleCode } from './enums';
 
 export function mapUser(dto: UserDto): UserProfile {
   return {
@@ -35,6 +35,29 @@ export function mapArticle(dto: ArticleDto): Article {
     liked: dto.liked ?? false,
     createdAt: dto.createdAt || '',
     updatedAt: dto.updatedAt || '',
+    publishedAt: dto.publishedAt ?? null,
+  };
+}
+
+export function mapLikedArticle(dto: LikedArticleDto): Article {
+  return {
+    id: dto.articleId,
+    title: dto.title,
+    content: dto.summary || '',
+    summary: dto.summary ?? null,
+    coverKey: dto.coverUrl ?? null,
+    authorId: dto.authorId,
+    authorName: dto.authorNickname ?? null,
+    categoryId: dto.categoryId,
+    categoryName: dto.categoryName ?? null,
+    tags: [],
+    status: ArticleStatusCode.Published,
+    viewCount: dto.viewCount ?? 0,
+    likeCount: dto.likeCount ?? 0,
+    commentCount: dto.commentCount ?? 0,
+    liked: true,
+    createdAt: dto.likedAt,
+    updatedAt: dto.likedAt,
     publishedAt: dto.publishedAt ?? null,
   };
 }

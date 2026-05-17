@@ -46,6 +46,7 @@ export default function Dashboard() {
   } = useDashboardData(user, isAdmin, authLoading);
 
   // Design State
+  const [nickname, setNickname] = useState(user?.displayName || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [bannerUrl, setBannerUrl] = useState(user?.bannerUrl || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
@@ -63,6 +64,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
+      setNickname(user.displayName || '');
       setBio(user.bio || '');
       setBannerUrl(user.bannerUrl || '');
       setAvatarUrl(user.avatarUrl || '');
@@ -124,6 +126,7 @@ export default function Dashboard() {
     setSavingDesign(true);
     try {
       await dataService.updateProfile({
+        nickname,
         bio,
       });
 
@@ -405,7 +408,7 @@ export default function Dashboard() {
                       <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 scale-110 opacity-50">
                         <Heart size={32} className="text-gray-300" />
                       </div>
-                      <p className="text-gray-400 font-serif italic mb-4">喜欢列表当前暂不可用，后端接口尚未开放。</p>
+                      <p className="text-gray-400 font-serif italic mb-4">还没有喜欢的文章。</p>
                       <Link to="/" className="text-xs font-bold text-[#3B82F6] uppercase tracking-widest hover:underline">去发现文章看看</Link>
                    </div>
                  )}
@@ -420,10 +423,18 @@ export default function Dashboard() {
                 <h3 className="text-xs font-bold text-[#3B82F6] uppercase tracking-[0.2em] border-b border-blue-100 pb-2">基础信息</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">展示名称</label>
-                    <div className="text-sm border border-gray-100 bg-gray-50/50 p-3 rounded-xl font-bold opacity-60">
-                      {user?.displayName}
-                    </div>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">昵称</label>
+                    <input
+                      type="text"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder="设置你的展示名称"
+                      maxLength={30}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-[#3B82F6] transition-all"
+                    />
+                    <p className="text-[10px] text-gray-400">
+                      最多 30 个字符。留空时后端会按资料规则处理。
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">个人简介</label>

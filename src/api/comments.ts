@@ -84,5 +84,5 @@ export async function getAllArticleComments(articleId: number): Promise<Comment[
 }
 
 export async function deleteComment(id: number): Promise<void> {
-  await apiClient.delete(`/api/comments/${id}`);
+  await apiClient.delete(`/comments/${id}`);
 }

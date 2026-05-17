@@ -88,11 +88,11 @@ export async function unpublishArticle(id: number): Promise<void> {
 }
 
 export async function likeArticle(id: number): Promise<void> {
-  await apiClient.post(`/api/articles/${id}/like`);
+  await apiClient.post(`/articles/${id}/like`);
 }
 
 export async function unlikeArticle(id: number): Promise<void> {
-  await apiClient.delete(`/api/articles/${id}/like`);
+  await apiClient.delete(`/articles/${id}/like`);
 }
 
 export async function getMyArticles(params: ArticleListParams = {}): Promise<PageResponse<Article>> {

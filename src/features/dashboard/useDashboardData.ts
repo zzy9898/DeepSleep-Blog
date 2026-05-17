@@ -55,8 +55,12 @@ export function useDashboardData(user: UserProfile | null, isAdmin: boolean, aut
           });
           setCategoryData(Object.entries(counts).map(([name, value]) => ({ name, value })));
         } else {
-          fetchedPosts = await dataService.getAllMyArticles();
-          setLikedPosts([]);
+          const [myArticles, myLikedArticles] = await Promise.all([
+            dataService.getAllMyArticles(),
+            dataService.getAllLikedArticles(),
+          ]);
+          fetchedPosts = myArticles;
+          setLikedPosts(myLikedArticles);
         }
 
         setPosts(fetchedPosts);
