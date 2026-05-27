@@ -3,6 +3,8 @@ import { Outlet } from 'react-router-dom';
 import DesktopPet from '../DesktopPet';
 import Navbar from './Navbar';
 
+const ICP_RECORD_NUMBER = import.meta.env.VITE_ICP_RECORD_NUMBER || '';
+
 export default function AppLayout() {
   const [isPetVisible, setIsPetVisible] = useState(() => localStorage.getItem('petVisible') !== 'false');
 
@@ -27,11 +29,26 @@ export default function AppLayout() {
       <div className="fixed bottom-[20%] left-[-10%] w-[30%] h-[30%] bg-emerald-100/10 rounded-full blur-[110px] pointer-events-none" />
 
       <Navbar />
-      <main className="flex-1 ml-[240px] p-6 md:p-10 transition-all">
-        <header className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-4" />
-        </header>
-        <Outlet />
+      <main className="flex-1 ml-[240px] min-h-screen p-6 md:p-10 transition-all flex flex-col">
+        <div className="flex-1">
+          <header className="flex justify-between items-center mb-10">
+            <div className="flex items-center gap-4" />
+          </header>
+          <Outlet />
+        </div>
+
+        <footer className="mt-12 pb-2 text-center text-xs text-gray-400">
+          {ICP_RECORD_NUMBER ? (
+            <a
+              href="https://beian.miit.gov.cn/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#3B82F6] transition-colors"
+            >
+              {ICP_RECORD_NUMBER}
+            </a>
+          ) : null}
+        </footer>
       </main>
       {isPetVisible && <DesktopPet />}
     </div>
